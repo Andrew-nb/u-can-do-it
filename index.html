@@ -1636,11 +1636,30 @@ class NavigationModule {
 
 // ==================== App Initialization ====================
 document.addEventListener('DOMContentLoaded', async () => {
-    // Parse token and user from URL parameters
+    // Parse token and user from URL parameters, with localStorage fallback
     // URL format: ?token=ghp_xxx&user=ytp
+    // First time: URL params → save to localStorage
+    // Later (e.g. home screen icon): read from localStorage
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token') || '';
-    const userKey = urlParams.get('user') || 'default';
+    const urlToken = urlParams.get('token');
+    const urlUser = urlParams.get('user');
+
+    let token, userKey;
+    if (urlToken) {
+        // URL has token, save to localStorage for future use
+        token = urlToken;
+        userKey = urlUser || 'default';
+        localStorage.setItem('cloud_sync_token', token);
+        localStorage.setItem('cloud_sync_user', userKey);
+        console.log('🔑 Token saved to localStorage for future use');
+    } else {
+        // No URL token, try to read from localStorage
+        token = localStorage.getItem('cloud_sync_token') || '';
+        userKey = localStorage.getItem('cloud_sync_user') || 'default';
+        if (token) {
+            console.log('🔑 Token loaded from localStorage');
+        }
+    }
 
     const dataManager = new DataManager(userKey);
 

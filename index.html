@@ -821,14 +821,32 @@ class DataManager {
 
     // Get weekly check-in count
     getWeeklyCheckIns(habit) {
-        const weekStart = this.getWeekStart(new Date());
+        // Use logical date (before 4am counts as previous day)
+        const now = new Date();
+        const logicalDate = new Date(now);
+        if (logicalDate.getHours() < 4) {
+            logicalDate.setDate(logicalDate.getDate() - 1);
+        }
+        const weekStart = this.getWeekStart(logicalDate);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
         
+        // Compare using date strings to avoid timezone issues
+        const weekStartStr = this.formatDateSimple(weekStart);
+        const weekEndStr = this.formatDateSimple(weekEnd);
+        
         return habit.checkIns.filter(date => {
-            const checkInDate = new Date(date);
-            return checkInDate >= weekStart && checkInDate <= weekEnd;
+            return date >= weekStartStr && date <= weekEndStr;
         }).length;
+    }
+
+    // Format date as YYYY-MM-DD without 4am logic (for date range comparison)
+    formatDateSimple(date) {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     // Check if today is checked in

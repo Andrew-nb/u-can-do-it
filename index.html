@@ -1341,7 +1341,16 @@ class HabitModule {
         }
         
         emptyState.classList.add('hidden');
-        habitList.innerHTML = habits.map(habit => this.createHabitCard(habit)).join('');
+        
+        // Sort: daily habits first, then weekly; within same type, earlier created first
+        const sortedHabits = [...habits].sort((a, b) => {
+            if (a.type !== b.type) {
+                return a.type === 'daily' ? -1 : 1;
+            }
+            return Number(a.id) - Number(b.id);
+        });
+        
+        habitList.innerHTML = sortedHabits.map(habit => this.createHabitCard(habit)).join('');
         
         // Bind check-in, cancel and delete events
         habits.forEach(habit => {

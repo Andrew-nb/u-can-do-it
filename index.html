@@ -1613,7 +1613,7 @@ class RecordModule {
                 
                 dayDiv.innerHTML = `
                     <div class="day-number">${day}</div>
-                    <div class="miss-count">${missCount.toFixed(2)}</div>
+                    <div class="miss-count">${missCount}</div>
                 `;
             }
             
@@ -1632,17 +1632,18 @@ class RecordModule {
     }
 
     // Calculate daily miss count for a given date
+    // Settlement logic:
+    //   - Daily habits: settled at 4am of the next day (dateStr's misses are finalized when todayStr > dateStr)
+    //   - Weekly habits: settled at Monday 4am of the next week; each day in that week gets the full miss count
+    //     (only days >= habit createdAt count)
     calculateDailyMissCount(dateStr) {
         const habits = this.dataManager.getHabits();
         let totalMiss = 0;
         
-        const today = new Date();
-        const todayStr = this.dataManager.formatDate(today);
-        const targetDate = new Date(dateStr);
-        const todayDate = new Date(todayStr);
+        const todayStr = this.dataManager.formatDate(new Date());
         
-        // Future dates default to 0
-        if (targetDate > todayDate) {
+        // Future dates or today: not yet settled
+        if (dateStr >= todayStr) {
             return 0;
         }
         
@@ -1653,24 +1654,17 @@ class RecordModule {
                 : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
             
             // If no createdAt info or target date is before creation, skip
-            if (!habitCreatedAt || targetDate < new Date(habitCreatedAt)) {
+            if (!habitCreatedAt || dateStr < habitCreatedAt) {
                 return;
             }
             
             if (habit.type === 'daily') {
-                // Daily habit: if the date has passed (past the 4am boundary) and not checked in, miss +1
-                // For today (current logical day), only count miss if it's already past 4am of the next real day
-                // i.e., the day is fully over
-                if (dateStr === todayStr) {
-                    // Today is not over yet, no miss counted
-                    return;
-                }
-                // Past day: not checked in = 1 miss
+                // Daily habit: dateStr is already past (settled), check if not checked in
                 if (!habit.checkIns.includes(dateStr)) {
                     totalMiss += 1;
                 }
             } else if (habit.type === 'weekly') {
-                // Weekly habit: only calculate after the week is fully over
+                // Weekly habit: only calculate after the week is fully over (next Monday 4am)
                 const weekMiss = this.calculateWeeklyMiss(habit, dateStr, todayStr);
                 totalMiss += weekMiss;
             }
@@ -1679,32 +1673,49 @@ class RecordModule {
         return totalMiss;
     }
 
-    // Calculate weekly miss spread to each day of that week
+    // Calculate weekly miss for a specific day
+    // Each day in the week gets the FULL miss count (not averaged),
+    // but only if the day >= habit's createdAt
     calculateWeeklyMiss(habit, dateStr, todayStr) {
         const date = new Date(dateStr);
         const weekStart = this.dataManager.getWeekStart(date);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
         
-        const today = new Date(todayStr);
+        // Week end string (Sunday) for comparison
+        const weekEndStr = this.dataManager.formatDateSimple(weekEnd);
+        const weekStartStr = this.dataManager.formatDateSimple(weekStart);
         
-        // If the week has not fully ended yet, return 0
-        if (today <= weekEnd) {
+        // The week is settled on the next Monday at 4am, i.e., todayStr > weekEndStr
+        if (todayStr <= weekEndStr) {
             return 0;
         }
         
-        // Count actual check-ins for that week
+        // Count actual check-ins for that week (using string comparison to avoid timezone issues)
         let weeklyCheckIns = 0;
         habit.checkIns.forEach(checkInDate => {
-            const checkIn = new Date(checkInDate);
-            if (checkIn >= weekStart && checkIn <= weekEnd) {
+            if (checkInDate >= weekStartStr && checkInDate <= weekEndStr) {
                 weeklyCheckIns++;
             }
         });
         
-        // Miss count = (goal - actual) spread evenly across 7 days
+        // Total miss for the entire week
         const totalMiss = Math.max(0, habit.weeklyGoal - weeklyCheckIns);
-        return totalMiss / 7;
+        if (totalMiss === 0) {
+            return 0;
+        }
+        
+        // Check if this habit existed on dateStr (createdAt <= dateStr)
+        const habitCreatedAt = habit.createdAt 
+            ? habit.createdAt 
+            : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
+        
+        if (!habitCreatedAt || dateStr < habitCreatedAt) {
+            return 0;
+        }
+        
+        // Each qualifying day gets the full miss count
+        return totalMiss;
     }
 
     // Map miss count to color level (0-3): 完美/良好/一般/严重

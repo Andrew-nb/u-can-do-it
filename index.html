@@ -1415,11 +1415,24 @@ class HabitModule {
 
             let actionArea = '';
             if (isCompleted) {
-                actionArea = `
-                    <div class="bg-green-50 text-green-700 text-center py-3 rounded-lg font-medium">
-                        🎉 本周目标已完成！
-                    </div>
-                `;
+                if (isCheckedToday) {
+                    actionArea = `
+                        <div class="flex space-x-2">
+                            <div class="flex-1 bg-green-50 text-green-700 text-center py-3 rounded-lg font-medium">
+                                🎉 本周目标已完成！
+                            </div>
+                            <button id="cancel-${habit.id}" class="cancel-checkin-btn px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium text-sm">
+                                撤回
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    actionArea = `
+                        <div class="bg-green-50 text-green-700 text-center py-3 rounded-lg font-medium">
+                            🎉 本周目标已完成！
+                        </div>
+                    `;
+                }
             } else if (isCheckedToday) {
                 actionArea = `
                     <div class="flex space-x-2">

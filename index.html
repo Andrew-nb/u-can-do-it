@@ -1592,7 +1592,7 @@ class RecordModule {
         
         for (let day = 1; day <= totalDays; day++) {
             const date = new Date(year, month, day);
-            const dateStr = this.dataManager.formatDate(date);
+            const dateStr = this.dataManager.formatDateSimple(date);
             
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day';

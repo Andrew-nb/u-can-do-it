@@ -219,6 +219,23 @@
     transform: scale(0.95);
 }
 
+/* Extra check-in button (golden gradient) */
+.extra-checkin-btn {
+    background: linear-gradient(to right, #f59e0b, #f97316);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.extra-checkin-btn:hover {
+    background: linear-gradient(to right, #d97706, #ea580c);
+}
+
+.extra-checkin-btn:active {
+    transform: scale(0.95);
+}
+
 /* Cancel check-in button */
 .cancel-checkin-btn {
     transition: all 0.3s;

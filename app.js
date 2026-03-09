@@ -966,9 +966,12 @@ class HabitModule {
                     `;
                 } else {
                     actionArea = `
-                        <div class="bg-green-50 text-green-700 text-center py-3 rounded-lg font-medium">
+                        <div class="bg-green-50 text-green-700 text-center py-3 rounded-lg font-medium mb-3">
                             🎉 本周目标已完成！
                         </div>
+                        <button id="checkIn-${habit.id}" class="extra-checkin-btn w-full font-bold py-3 rounded-lg transition-all">
+                            额外打卡
+                        </button>
                     `;
                 }
             } else if (isCheckedToday) {

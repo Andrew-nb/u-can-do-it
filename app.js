@@ -1145,7 +1145,7 @@ class RecordModule {
                 
                 dayDiv.innerHTML = `
                     <div class="day-number">${day}</div>
-                    <div class="miss-count">${missCount}</div>
+                    <div class="miss-count">${missCount === 0 ? '完美' : '缺卡' + missCount + '次'}</div>
                 `;
             }
             

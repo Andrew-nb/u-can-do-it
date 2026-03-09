@@ -785,7 +785,75 @@ class HabitModule {
         }
     }
 
-    renderHabits() {
+    // Sort habits: unchecked today on top, checked today on bottom;
+    // within each group: daily first, then weekly; same type sorted by creation time
+    sortHabits(habits) {
+        return [...habits].sort((a, b) => {
+            const aChecked = this.dataManager.isTodayCheckedIn(a) ? 1 : 0;
+            const bChecked = this.dataManager.isTodayCheckedIn(b) ? 1 : 0;
+            // Unchecked first
+            if (aChecked !== bChecked) return aChecked - bChecked;
+            // Within same group: daily before weekly
+            if (a.type !== b.type) return a.type === 'daily' ? -1 : 1;
+            // Same type: earlier created first
+            return Number(a.id) - Number(b.id);
+        });
+    }
+
+    // Capture current positions of all habit cards (FLIP: First)
+    capturePositions() {
+        const positions = new Map();
+        const cards = document.querySelectorAll('.habit-card[data-habit-id]');
+        cards.forEach(card => {
+            const rect = card.getBoundingClientRect();
+            positions.set(card.dataset.habitId, { top: rect.top, left: rect.left });
+        });
+        return positions;
+    }
+
+    // Apply FLIP animation: animate cards from old positions to new positions
+    applyFlipAnimation(oldPositions) {
+        const cards = document.querySelectorAll('.habit-card[data-habit-id]');
+        cards.forEach(card => {
+            const habitId = card.dataset.habitId;
+            const oldPos = oldPositions.get(habitId);
+            if (!oldPos) {
+                // New card, fade in
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.9)';
+                requestAnimationFrame(() => {
+                    card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'scale(1)';
+                    card.addEventListener('transitionend', () => {
+                        card.style.transition = '';
+                        card.style.transform = '';
+                    }, { once: true });
+                });
+                return;
+            }
+            const newRect = card.getBoundingClientRect();
+            const deltaX = oldPos.left - newRect.left;
+            const deltaY = oldPos.top - newRect.top;
+            if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+
+            // Invert: move card back to old position
+            card.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            card.style.transition = 'none';
+
+            // Play: animate to new position
+            requestAnimationFrame(() => {
+                card.style.transition = 'transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                card.style.transform = 'translate(0, 0)';
+                card.addEventListener('transitionend', () => {
+                    card.style.transition = '';
+                    card.style.transform = '';
+                }, { once: true });
+            });
+        });
+    }
+
+    renderHabits(animate = false) {
         const habits = this.dataManager.getHabits();
         const habitList = document.getElementById('habitList');
         const emptyState = document.getElementById('emptyHabitState');
@@ -798,15 +866,20 @@ class HabitModule {
         
         emptyState.classList.add('hidden');
         
-        // Sort: daily habits first, then weekly; within same type, earlier created first
-        const sortedHabits = [...habits].sort((a, b) => {
-            if (a.type !== b.type) {
-                return a.type === 'daily' ? -1 : 1;
-            }
-            return Number(a.id) - Number(b.id);
-        });
+        // Capture old positions for FLIP animation
+        let oldPositions = null;
+        if (animate) {
+            oldPositions = this.capturePositions();
+        }
+        
+        const sortedHabits = this.sortHabits(habits);
         
         habitList.innerHTML = sortedHabits.map(habit => this.createHabitCard(habit)).join('');
+        
+        // Apply FLIP animation
+        if (animate && oldPositions) {
+            this.applyFlipAnimation(oldPositions);
+        }
         
         // Bind check-in, cancel and delete events
         habits.forEach(habit => {
@@ -861,7 +934,7 @@ class HabitModule {
             }
 
             return `
-                <div class="habit-card">
+                <div class="habit-card" data-habit-id="${habit.id}">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <h4 class="text-xl font-bold text-gray-800 mb-1">${habit.name}</h4>
@@ -918,7 +991,7 @@ class HabitModule {
             }
 
             return `
-                <div class="habit-card">
+                <div class="habit-card" data-habit-id="${habit.id}">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <h4 class="text-xl font-bold text-gray-800 mb-1">${habit.name}</h4>
@@ -947,7 +1020,7 @@ class HabitModule {
 
     checkInHabit(habitId) {
         this.dataManager.checkInHabit(habitId);
-        this.renderHabits();
+        this.renderHabits(true);
         this.showToast('✅ 打卡成功！');
         if (window.cloudSync) window.cloudSync.debouncedPush(this.dataManager);
     }
@@ -955,7 +1028,7 @@ class HabitModule {
     cancelCheckIn(habitId) {
         if (confirm('确定要撤回今日打卡吗？')) {
             this.dataManager.cancelCheckInHabit(habitId);
-            this.renderHabits();
+            this.renderHabits(true);
             this.showToast('↩️ 已撤回今日打卡');
             if (window.cloudSync) window.cloudSync.debouncedPush(this.dataManager);
         }

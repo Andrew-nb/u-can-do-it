@@ -333,7 +333,7 @@
     line-height: 1;
 }
 
-/* Miss count color levels: 完美/良好/一般/严重 */
+/* Miss count color levels: 0=完美(green) / 1=yellow / 2-3=orange / 4+=red */
 .calendar-day.level-0 {
     background-color: #10b981;
     color: white;

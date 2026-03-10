@@ -1129,24 +1129,36 @@ class RecordModule {
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day';
             
-            if (date > today) {
+            // Today or future: show as gray (unsettled)
+            if (dateStr >= todayStr) {
                 dayDiv.classList.add('future');
+                if (dateStr === todayStr) {
+                    dayDiv.classList.add('today');
+                }
                 dayDiv.innerHTML = `
                     <div class="day-number">${day}</div>
                 `;
             } else {
-                const missCount = this.calculateDailyMissCount(dateStr);
-                const level = this.getMissLevel(missCount);
-                dayDiv.classList.add(`level-${level}`);
+                // Past date: check if any habits exist for this day
+                const hasHabits = this.hasHabitsOnDate(dateStr);
                 
-                if (dateStr === todayStr) {
-                    dayDiv.classList.add('today');
+                if (!hasHabits) {
+                    // No habits associated with this day: gray
+                    dayDiv.classList.add('future');
+                    dayDiv.innerHTML = `
+                        <div class="day-number">${day}</div>
+                    `;
+                } else {
+                    // Has habits: calculate miss count and show color
+                    const missCount = this.calculateDailyMissCount(dateStr);
+                    const level = this.getMissLevel(missCount);
+                    dayDiv.classList.add(`level-${level}`);
+                    
+                    dayDiv.innerHTML = `
+                        <div class="day-number">${day}</div>
+                        <div class="miss-count">${missCount === 0 ? '完美' : '缺卡' + missCount + '次'}</div>
+                    `;
                 }
-                
-                dayDiv.innerHTML = `
-                    <div class="day-number">${day}</div>
-                    <div class="miss-count">${missCount === 0 ? '完美' : '缺卡' + missCount + '次'}</div>
-                `;
             }
             
             calendarGrid.appendChild(dayDiv);
@@ -1163,6 +1175,39 @@ class RecordModule {
         }
     }
 
+    // Check if any habits (daily or weekly) are associated with a given date
+    hasHabitsOnDate(dateStr) {
+        const habits = this.dataManager.getHabits();
+        
+        for (const habit of habits) {
+            const habitCreatedAt = habit.createdAt 
+                ? habit.createdAt 
+                : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
+            
+            if (!habitCreatedAt) continue;
+            
+            if (habit.type === 'daily') {
+                // Daily habit: exists if created on or before this date
+                if (habitCreatedAt <= dateStr) {
+                    return true;
+                }
+            } else if (habit.type === 'weekly') {
+                // Weekly habit: check if habit was created on or before the end of this week
+                const date = new Date(dateStr);
+                const weekStart = this.dataManager.getWeekStart(date);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                const weekEndStr = this.dataManager.formatDateSimple(weekEnd);
+                
+                if (habitCreatedAt <= weekEndStr) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
     // Calculate daily miss count for a given date
     calculateDailyMissCount(dateStr) {
         const habits = this.dataManager.getHabits();
@@ -1170,7 +1215,7 @@ class RecordModule {
         
         const todayStr = this.dataManager.formatDate(new Date());
         
-        // Future dates or today: not yet settled
+        // Today or future: not yet settled
         if (dateStr >= todayStr) {
             return 0;
         }
@@ -1181,18 +1226,27 @@ class RecordModule {
                 ? habit.createdAt 
                 : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
             
-            // If no createdAt info or target date is before creation, skip
-            if (!habitCreatedAt || dateStr < habitCreatedAt) {
-                return;
-            }
-            
             if (habit.type === 'daily') {
-                // Daily habit: dateStr is already past (settled), check if not checked in
+                // Daily habit: must be created on or before dateStr
+                if (!habitCreatedAt || dateStr < habitCreatedAt) {
+                    return;
+                }
                 if (!habit.checkIns.includes(dateStr)) {
                     totalMiss += 1;
                 }
             } else if (habit.type === 'weekly') {
-                // Weekly habit: only calculate after the week is fully over (next Monday 4am)
+                // Weekly habit: check by week range
+                const date = new Date(dateStr);
+                const weekStart = this.dataManager.getWeekStart(date);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                const weekEndStr = this.dataManager.formatDateSimple(weekEnd);
+                
+                // Habit must exist within this week (created on or before week end)
+                if (!habitCreatedAt || habitCreatedAt > weekEndStr) {
+                    return;
+                }
+                
                 const weekMiss = this.calculateWeeklyMiss(habit, dateStr, todayStr);
                 totalMiss += weekMiss;
             }
@@ -1202,6 +1256,7 @@ class RecordModule {
     }
 
     // Calculate weekly miss for a specific day
+    // Note: caller already ensures habit exists within this week range
     calculateWeeklyMiss(habit, dateStr, todayStr) {
         const date = new Date(dateStr);
         const weekStart = this.dataManager.getWeekStart(date);
@@ -1217,7 +1272,7 @@ class RecordModule {
             return 0;
         }
         
-        // Count actual check-ins for that week
+        // Count actual check-ins for that week (only count up to weeklyGoal for miss calculation)
         let weeklyCheckIns = 0;
         habit.checkIns.forEach(checkInDate => {
             if (checkInDate >= weekStartStr && checkInDate <= weekEndStr) {
@@ -1225,31 +1280,18 @@ class RecordModule {
             }
         });
         
-        // Total miss for the entire week
-        const totalMiss = Math.max(0, habit.weeklyGoal - weeklyCheckIns);
-        if (totalMiss === 0) {
-            return 0;
-        }
+        // Total miss for the entire week (extra check-ins don't affect miss count)
+        const totalMiss = Math.max(0, habit.weeklyGoal - Math.min(weeklyCheckIns, habit.weeklyGoal));
         
-        // Check if this habit existed on dateStr (createdAt <= dateStr)
-        const habitCreatedAt = habit.createdAt 
-            ? habit.createdAt 
-            : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
-        
-        if (!habitCreatedAt || dateStr < habitCreatedAt) {
-            return 0;
-        }
-        
-        // Each qualifying day gets the full miss count
         return totalMiss;
     }
 
     // Map miss count to color level (0-3)
     getMissLevel(missCount) {
-        if (missCount === 0) return 0;  // green
-        if (missCount < 2) return 1;   // yellow
-        if (missCount <= 4) return 2;  // orange
-        return 3;                       // red
+        if (missCount === 0) return 0;  // green: perfect
+        if (missCount === 1) return 1;  // yellow: 1 miss
+        if (missCount <= 3) return 2;   // orange: 2-3 misses
+        return 3;                        // red: 4+ misses
     }
 }
 

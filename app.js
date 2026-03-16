@@ -47,6 +47,7 @@ class CloudSync {
             allData[this.userKey] = {
                 sleepRecords: dataManager.getSleepRecords(),
                 habitRecords: dataManager.getHabits(),
+                missSnapshot: dataManager.getMissSnapshot(),
                 lastSync: new Date().toISOString()
             };
 
@@ -143,6 +144,13 @@ class CloudSync {
                 localStorage.setItem(dataManager.HABIT_KEY, JSON.stringify(Array.from(map.values())));
             }
 
+            // Merge miss snapshot (cloud as base, local overrides)
+            if (cloud.missSnapshot) {
+                const localSnapshot = dataManager.getMissSnapshot();
+                const merged = { ...cloud.missSnapshot, ...localSnapshot };
+                dataManager.saveMissSnapshot(merged);
+            }
+
             this.updateStatus('success');
             console.log(`[CloudSync] Pull success for user: ${this.userKey}`);
             return true;
@@ -183,6 +191,18 @@ class DataManager {
         this.userKey = userKey;
         this.SLEEP_KEY = `sleepRecords_${userKey}`;
         this.HABIT_KEY = `habitRecords_${userKey}`;
+        this.MISS_SNAPSHOT_KEY = `missSnapshot_${userKey}`;
+    }
+
+    // Get miss snapshot data { "2026-03-10": { miss: 2, hasHabits: true }, ... }
+    getMissSnapshot() {
+        const data = localStorage.getItem(this.MISS_SNAPSHOT_KEY);
+        return data ? JSON.parse(data) : {};
+    }
+
+    // Save miss snapshot data
+    saveMissSnapshot(snapshot) {
+        localStorage.setItem(this.MISS_SNAPSHOT_KEY, JSON.stringify(snapshot));
     }
 
     // Get sleep records
@@ -236,12 +256,96 @@ class DataManager {
         return habits;
     }
 
-    // Delete habit
+    // Delete habit (snapshot miss data before deletion to preserve history)
     deleteHabit(habitId) {
+        // Before deleting, snapshot all past dates' miss data
+        this.snapshotMissBeforeDelete();
+
         const habits = this.getHabits();
         const filtered = habits.filter(h => h.id !== habitId);
         localStorage.setItem(this.HABIT_KEY, JSON.stringify(filtered));
         return filtered;
+    }
+
+    // Generate miss snapshot for all past dates (up to yesterday)
+    snapshotMissBeforeDelete() {
+        const habits = this.getHabits();
+        if (habits.length === 0) return;
+
+        const snapshot = this.getMissSnapshot();
+        const todayStr = this.formatDate(new Date());
+
+        // Find the earliest createdAt among all habits
+        let earliest = todayStr;
+        habits.forEach(h => {
+            const created = h.createdAt || (h.checkIns.length > 0 ? h.checkIns[0] : null);
+            if (created && created < earliest) earliest = created;
+        });
+
+        // Iterate from earliest date to yesterday
+        const current = new Date(earliest);
+        const todayDate = new Date(todayStr);
+
+        while (current < todayDate) {
+            const dateStr = this.formatDateSimple(current);
+            // Only snapshot dates that haven't been snapshotted yet
+            if (!snapshot[dateStr]) {
+                const result = this._calcSnapshotForDate(dateStr, habits, todayStr);
+                if (result.hasHabits) {
+                    snapshot[dateStr] = { miss: result.miss, hasHabits: true };
+                }
+            }
+            current.setDate(current.getDate() + 1);
+        }
+
+        this.saveMissSnapshot(snapshot);
+    }
+
+    // Calculate miss count for a specific date using provided habits array
+    _calcSnapshotForDate(dateStr, habits, todayStr) {
+        let hasHabits = false;
+        let totalMiss = 0;
+
+        if (dateStr >= todayStr) {
+            return { hasHabits: false, miss: 0 };
+        }
+
+        habits.forEach(habit => {
+            const habitCreatedAt = habit.createdAt
+                ? habit.createdAt
+                : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
+
+            if (habit.type === 'daily') {
+                if (!habitCreatedAt || dateStr < habitCreatedAt) return;
+                hasHabits = true;
+                if (!habit.checkIns.includes(dateStr)) {
+                    totalMiss += 1;
+                }
+            } else if (habit.type === 'weekly') {
+                const date = new Date(dateStr);
+                const weekStart = this.getWeekStart(date);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                const weekEndStr = this.formatDateSimple(weekEnd);
+                const weekStartStr = this.formatDateSimple(weekStart);
+
+                if (!habitCreatedAt || habitCreatedAt > weekEndStr) return;
+                hasHabits = true;
+
+                // Only calculate weekly miss if the week is fully past
+                if (todayStr <= weekEndStr) return;
+
+                let weeklyCheckIns = 0;
+                habit.checkIns.forEach(checkInDate => {
+                    if (checkInDate >= weekStartStr && checkInDate <= weekEndStr) {
+                        weeklyCheckIns++;
+                    }
+                });
+                totalMiss += Math.max(0, habit.weeklyGoal - Math.min(weeklyCheckIns, habit.weeklyGoal));
+            }
+        });
+
+        return { hasHabits, miss: totalMiss };
     }
 
     // Check in habit
@@ -1177,6 +1281,12 @@ class RecordModule {
 
     // Check if any habits (daily or weekly) are associated with a given date
     hasHabitsOnDate(dateStr) {
+        // Priority: check snapshot first (preserves history after habit deletion)
+        const snapshot = this.dataManager.getMissSnapshot();
+        if (snapshot[dateStr]) {
+            return snapshot[dateStr].hasHabits;
+        }
+
         const habits = this.dataManager.getHabits();
         
         for (const habit of habits) {
@@ -1210,6 +1320,12 @@ class RecordModule {
 
     // Calculate daily miss count for a given date
     calculateDailyMissCount(dateStr) {
+        // Priority: check snapshot first (preserves history after habit deletion)
+        const snapshot = this.dataManager.getMissSnapshot();
+        if (snapshot[dateStr]) {
+            return snapshot[dateStr].miss;
+        }
+
         const habits = this.dataManager.getHabits();
         let totalMiss = 0;
         

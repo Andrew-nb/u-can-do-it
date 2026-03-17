@@ -16,25 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-lg sticky top-0 z-50">
-        <div class="w-full">
-            <div class="flex items-center h-12" style="position:relative;">
-                <button id="navSleep" class="nav-btn active font-medium transition-all">
-                    😴 睡眠
-                </button>
-                <button id="navHabit" class="nav-btn font-medium transition-all">
-                    ✅ 习惯
-                </button>
-                <button id="navRecord" class="nav-btn font-medium transition-all">
-                    📅 记录
-                </button>
-                <span id="syncIndicator" title="云同步" style="position:absolute;right:12px;font-size:0.75rem;opacity:0.5;cursor:pointer;user-select:none;">📴</span>
-            </div>
-        </div>
-    </nav>
-
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen pb-24">
     <!-- Sleep Check-in Page -->
     <div id="sleepPage" class="page-content active">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -180,6 +162,23 @@
             </form>
         </div>
     </div>
+
+    <!-- Floating Bottom Navigation -->
+    <nav class="floating-nav" id="floatingNav">
+        <button id="navSleep" class="nav-btn active" title="睡眠">
+            😴
+        </button>
+        <button id="navHabit" class="nav-btn" title="习惯">
+            ✅
+        </button>
+        <button id="navRecord" class="nav-btn" title="记录">
+            📅
+        </button>
+        <span class="nav-divider"></span>
+        <button id="syncIndicator" class="nav-btn sync-btn" title="云同步">
+            📴
+        </button>
+    </nav>
 
     <script src="app.js"></script>
 

@@ -91,32 +91,67 @@
     }
 }
 
-/* Navigation button styles */
-.nav-btn {
-    color: #6b7280;
-    background-color: transparent;
-    white-space: nowrap;
-    font-size: 0.95rem;
-    padding: 0.6rem 0;
-    flex: 1;
-    text-align: center;
-    border-bottom: 3px solid transparent;
-    border-radius: 0;
+/* Floating bottom navigation bar */
+.floating-nav {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(79, 70, 229, 0.15);
+    border-radius: 9999px;
+    padding: 6px 8px;
+    box-shadow: 0 8px 32px rgba(79, 70, 229, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.nav-btn.active {
-    color: #4f46e5;
-    background-color: transparent;
-    border-bottom-color: #4f46e5;
-    font-weight: 600;
+/* Navigation button styles */
+.nav-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+    position: relative;
 }
 
 .nav-btn:hover {
-    background-color: #f9fafb;
+    background: rgba(79, 70, 229, 0.08);
 }
 
-.nav-btn.active:hover {
-    background-color: #f9fafb;
+.nav-btn.active {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+    transform: scale(1.08);
+}
+
+/* Divider between nav buttons and sync button */
+.nav-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(79, 70, 229, 0.2);
+    margin: 0 4px;
+}
+
+/* Sync button specific */
+.sync-btn {
+    font-size: 0.95rem;
+    opacity: 0.6;
+}
+
+.sync-btn:hover {
+    opacity: 1;
 }
 
 /* Time range button styles */
@@ -361,8 +396,19 @@
 
 /* Mobile navigation adjustments */
 @media (max-width: 480px) {
+    .floating-nav {
+        bottom: 18px;
+        padding: 5px 6px;
+        gap: 2px;
+    }
     .nav-btn {
-        font-size: 0.88rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.15rem;
+    }
+    .nav-divider {
+        height: 20px;
+        margin: 0 2px;
     }
     .calendar-day .day-number {
         font-size: 0.7rem;

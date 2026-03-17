@@ -94,19 +94,21 @@
 /* Floating bottom navigation bar */
 .floating-nav {
     position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 50;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: fit-content;
+    z-index: 9999;
     display: flex;
     align-items: center;
-    gap: 4px;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(79, 70, 229, 0.15);
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid rgba(79, 70, 229, 0.15);
     border-radius: 9999px;
-    padding: 6px 8px;
+    padding: 8px 16px;
     box-shadow: 0 8px 32px rgba(79, 70, 229, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -133,7 +135,6 @@
 .nav-btn.active {
     background: linear-gradient(135deg, #4f46e5, #7c3aed);
     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
-    transform: scale(1.08);
 }
 
 /* Divider between nav buttons and sync button */
@@ -397,18 +398,18 @@
 /* Mobile navigation adjustments */
 @media (max-width: 480px) {
     .floating-nav {
-        bottom: 18px;
-        padding: 5px 6px;
-        gap: 2px;
+        bottom: 22px;
+        padding: 6px 14px;
+        gap: 8px;
     }
     .nav-btn {
-        width: 40px;
-        height: 40px;
-        font-size: 1.15rem;
+        width: 42px;
+        height: 42px;
+        font-size: 1.2rem;
     }
     .nav-divider {
-        height: 20px;
-        margin: 0 2px;
+        height: 22px;
+        margin: 0 3px;
     }
     .calendar-day .day-number {
         font-size: 0.7rem;

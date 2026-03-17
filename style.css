@@ -94,7 +94,7 @@
 /* Floating bottom navigation bar */
 .floating-nav {
     position: fixed;
-    bottom: 28px;
+    bottom: 40px;
     left: 0;
     right: 0;
     margin: 0 auto;
@@ -102,13 +102,13 @@
     z-index: 9999;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 18px;
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1.5px solid rgba(79, 70, 229, 0.15);
     border-radius: 9999px;
-    padding: 8px 16px;
+    padding: 8px 20px;
     box-shadow: 0 8px 32px rgba(79, 70, 229, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -142,7 +142,7 @@
     width: 1px;
     height: 24px;
     background: rgba(79, 70, 229, 0.2);
-    margin: 0 4px;
+    margin: 0 -4px;
 }
 
 /* Sync button specific */
@@ -398,9 +398,9 @@
 /* Mobile navigation adjustments */
 @media (max-width: 480px) {
     .floating-nav {
-        bottom: 22px;
-        padding: 6px 14px;
-        gap: 8px;
+        bottom: 34px;
+        padding: 6px 16px;
+        gap: 14px;
     }
     .nav-btn {
         width: 42px;
@@ -409,7 +409,7 @@
     }
     .nav-divider {
         height: 22px;
-        margin: 0 3px;
+        margin: 0 -3px;
     }
     .calendar-day .day-number {
         font-size: 0.7rem;

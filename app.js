@@ -508,15 +508,32 @@ class SleepModule {
 
     updateDateDisplay() {
         const now = new Date();
+        const hour = now.getHours();
         const dateStr = now.toLocaleDateString('zh-CN', { 
             year: 'numeric', 
             month: 'long', 
             day: 'numeric' 
         });
         const weekday = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()];
-        
-        document.getElementById('sleepDate').textContent = dateStr;
-        document.getElementById('sleepWeekday').textContent = weekday;
+
+        // Greeting based on time: 4:00-11:59 morning, 12:00-13:59 noon, 14:00-17:59 afternoon, 18:00-3:59 evening
+        let greetingText;
+        if (hour >= 4 && hour < 12) {
+            greetingText = '早上好';
+        } else if (hour >= 12 && hour < 14) {
+            greetingText = '中午好';
+        } else if (hour >= 14 && hour < 18) {
+            greetingText = '下午好';
+        } else {
+            greetingText = '晚上好';
+        }
+
+        // Get username from cloud_sync_user, fallback to '陌生人'
+        const userName = localStorage.getItem('cloud_sync_user');
+        const displayName = (userName && userName !== 'default') ? userName : '陌生人';
+
+        document.getElementById('sleepGreeting').textContent = `${displayName}，${greetingText}`;
+        document.getElementById('sleepDateLine').textContent = `${dateStr}  ${weekday}`;
     }
 
     loadTodayRecord() {

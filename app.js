@@ -509,12 +509,6 @@ class SleepModule {
     updateDateDisplay() {
         const now = new Date();
         const hour = now.getHours();
-        const dateStr = now.toLocaleDateString('zh-CN', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
-        const weekday = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()];
 
         // Greeting based on time: 4:00-11:59 morning, 12:00-13:59 noon, 14:00-17:59 afternoon, 18:00-3:59 evening
         let greetingText;
@@ -533,7 +527,6 @@ class SleepModule {
         const displayName = (userName && userName !== 'default') ? userName : '陌生人';
 
         document.getElementById('sleepGreeting').textContent = `${displayName}，${greetingText}`;
-        document.getElementById('sleepDateLine').textContent = `${dateStr}  ${weekday}`;
     }
 
     loadTodayRecord() {

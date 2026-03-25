@@ -171,6 +171,44 @@ class DataManager {
         this.SLEEP_KEY = `sleepRecords_${userKey}`;
         this.HABIT_KEY = `habitRecords_${userKey}`;
         this.MISS_SNAPSHOT_KEY = `missSnapshot_${userKey}`;
+
+        // Clean up snapshot data for the current unsettled week
+        // (fixes stale data from previous bug where weekly habits
+        //  incorrectly wrote hasHabits:true for unsettled weeks)
+        this._cleanCurrentWeekSnapshot();
+    }
+
+    // Remove snapshot entries for the current unsettled week
+    // so they are re-calculated in real-time
+    _cleanCurrentWeekSnapshot() {
+        const snapshot = this.getMissSnapshot();
+        if (Object.keys(snapshot).length === 0) return;
+
+        const now = new Date();
+        const logicalDate = new Date(now);
+        if (logicalDate.getHours() < 4) {
+            logicalDate.setDate(logicalDate.getDate() - 1);
+        }
+        const weekStart = this.getWeekStart(logicalDate);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const weekStartStr = this.formatDateSimple(weekStart);
+        const weekEndStr = this.formatDateSimple(weekEnd);
+        const todayStr = this.formatDate(new Date());
+
+        // Only clean if the current week is not yet settled (todayStr <= weekEndStr)
+        if (todayStr > weekEndStr) return;
+
+        let changed = false;
+        for (const dateStr of Object.keys(snapshot)) {
+            if (dateStr >= weekStartStr && dateStr <= weekEndStr) {
+                delete snapshot[dateStr];
+                changed = true;
+            }
+        }
+        if (changed) {
+            this.saveMissSnapshot(snapshot);
+        }
     }
 
     // Get miss snapshot data { "2026-03-10": { miss: 2, hasHabits: true }, ... }
@@ -265,13 +303,26 @@ class DataManager {
         const current = new Date(earliest);
         const todayDate = new Date(todayStr);
 
+        // Determine current week end to identify unsettled week dates
+        const logicalToday = new Date(todayStr);
+        const currentWeekStart = this.getWeekStart(logicalToday);
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
+        const currentWeekEndStr = this.formatDateSimple(currentWeekEnd);
+        const currentWeekStartStr = this.formatDateSimple(currentWeekStart);
+
         while (current < todayDate) {
             const dateStr = this.formatDateSimple(current);
-            // Only snapshot dates that haven't been snapshotted yet
-            if (!snapshot[dateStr]) {
+            // For dates in the current unsettled week, always re-calculate (overwrite old snapshot)
+            // For past settled dates, only snapshot if not already done
+            const isInCurrentWeek = dateStr >= currentWeekStartStr && dateStr <= currentWeekEndStr;
+            if (!snapshot[dateStr] || isInCurrentWeek) {
                 const result = this._calcSnapshotForDate(dateStr, habits, todayStr);
                 if (result.hasHabits) {
                     snapshot[dateStr] = { miss: result.miss, hasHabits: true };
+                } else if (isInCurrentWeek) {
+                    // Clean up stale snapshot for current week dates that no longer have habits
+                    delete snapshot[dateStr];
                 }
             }
             current.setDate(current.getDate() + 1);

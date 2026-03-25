@@ -31,7 +31,7 @@ class CloudSync {
                 nickname,
                 sleepRecords: dataManager.getSleepRecords(),
                 habitRecords: dataManager.getHabits(),
-                missSnapshot: dataManager.getMissSnapshot(),
+                deletedMissCompensation: dataManager.getDeletedMissCompensation(),
             };
 
             const res = await fetch(`${this.WORKER_URL}/push?uid=${this.uid}`, {
@@ -112,11 +112,14 @@ class CloudSync {
                 localStorage.setItem(dataManager.HABIT_KEY, JSON.stringify(Array.from(map.values())));
             }
 
-            // Merge miss snapshot (cloud as base, local overrides)
-            if (cloud.missSnapshot) {
-                const localSnapshot = dataManager.getMissSnapshot();
-                const merged = { ...cloud.missSnapshot, ...localSnapshot };
-                dataManager.saveMissSnapshot(merged);
+            // Merge deleted miss compensation (take max value per date)
+            if (cloud.deletedMissCompensation) {
+                const localComp = dataManager.getDeletedMissCompensation();
+                const merged = { ...cloud.deletedMissCompensation };
+                for (const [dateStr, val] of Object.entries(localComp)) {
+                    merged[dateStr] = Math.max(merged[dateStr] || 0, val);
+                }
+                dataManager.saveDeletedMissCompensation(merged);
             }
 
             this.updateStatus('success');
@@ -170,56 +173,37 @@ class DataManager {
         this.userKey = userKey;
         this.SLEEP_KEY = `sleepRecords_${userKey}`;
         this.HABIT_KEY = `habitRecords_${userKey}`;
-        this.MISS_SNAPSHOT_KEY = `missSnapshot_${userKey}`;
+        this.MISS_COMPENSATION_KEY = `deletedMissCompensation_${userKey}`;
 
-        // Clean up snapshot data for the current unsettled week
-        // (fixes stale data from previous bug where weekly habits
-        //  incorrectly wrote hasHabits:true for unsettled weeks)
-        this._cleanCurrentWeekSnapshot();
+        // Migrate old missSnapshot data to new compensation format on first load
+        this._migrateSnapshotToCompensation(userKey);
     }
 
-    // Remove snapshot entries for the current unsettled week
-    // so they are re-calculated in real-time
-    _cleanCurrentWeekSnapshot() {
-        const snapshot = this.getMissSnapshot();
-        if (Object.keys(snapshot).length === 0) return;
+    // One-time migration: convert old missSnapshot to new compensation format
+    // After migration, remove the old key
+    _migrateSnapshotToCompensation(userKey) {
+        const oldKey = `missSnapshot_${userKey}`;
+        const oldData = localStorage.getItem(oldKey);
+        if (!oldData) return;
 
-        const now = new Date();
-        const logicalDate = new Date(now);
-        if (logicalDate.getHours() < 4) {
-            logicalDate.setDate(logicalDate.getDate() - 1);
-        }
-        const weekStart = this.getWeekStart(logicalDate);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        const weekStartStr = this.formatDateSimple(weekStart);
-        const weekEndStr = this.formatDateSimple(weekEnd);
-        const todayStr = this.formatDate(new Date());
-
-        // Only clean if the current week is not yet settled (todayStr <= weekEndStr)
-        if (todayStr > weekEndStr) return;
-
-        let changed = false;
-        for (const dateStr of Object.keys(snapshot)) {
-            if (dateStr >= weekStartStr && dateStr <= weekEndStr) {
-                delete snapshot[dateStr];
-                changed = true;
-            }
-        }
-        if (changed) {
-            this.saveMissSnapshot(snapshot);
-        }
+        // Old snapshot data exists, but the new compensation system works differently.
+        // Old snapshot stored full miss counts (including existing habits),
+        // while new compensation only stores miss from DELETED habits.
+        // We cannot reliably convert, so just remove the old data.
+        // The compensation map starts fresh — only future deletions will record.
+        localStorage.removeItem(oldKey);
+        console.log('[DataManager] Migrated: removed old missSnapshot key, starting fresh with deletedMissCompensation.');
     }
 
-    // Get miss snapshot data { "2026-03-10": { miss: 2, hasHabits: true }, ... }
-    getMissSnapshot() {
-        const data = localStorage.getItem(this.MISS_SNAPSHOT_KEY);
+    // Get deleted miss compensation data { "2026-03-10": 1, "2026-03-21": 2, ... }
+    getDeletedMissCompensation() {
+        const data = localStorage.getItem(this.MISS_COMPENSATION_KEY);
         return data ? JSON.parse(data) : {};
     }
 
-    // Save miss snapshot data
-    saveMissSnapshot(snapshot) {
-        localStorage.setItem(this.MISS_SNAPSHOT_KEY, JSON.stringify(snapshot));
+    // Save deleted miss compensation data
+    saveDeletedMissCompensation(compensation) {
+        localStorage.setItem(this.MISS_COMPENSATION_KEY, JSON.stringify(compensation));
     }
 
     // Get sleep records
@@ -273,110 +257,119 @@ class DataManager {
         return habits;
     }
 
-    // Delete habit (snapshot miss data before deletion to preserve history)
+    // Delete habit (record miss compensation for settled dates before deletion)
     deleteHabit(habitId) {
-        // Before deleting, snapshot all past dates' miss data
-        this.snapshotMissBeforeDelete();
-
         const habits = this.getHabits();
+        const habit = habits.find(h => h.id === habitId);
+
+        // Before deleting, calculate compensation for this habit's missed dates
+        if (habit) {
+            this._recordMissCompensation(habit);
+        }
+
         const filtered = habits.filter(h => h.id !== habitId);
         localStorage.setItem(this.HABIT_KEY, JSON.stringify(filtered));
         return filtered;
     }
 
-    // Generate miss snapshot for all past dates (up to yesterday)
-    snapshotMissBeforeDelete() {
-        const habits = this.getHabits();
-        if (habits.length === 0) return;
-
-        const snapshot = this.getMissSnapshot();
+    // Record miss compensation for a habit being deleted
+    // Only counts settled dates (before today's logical date)
+    _recordMissCompensation(habit) {
+        const compensation = this.getDeletedMissCompensation();
         const todayStr = this.formatDate(new Date());
 
-        // Find the earliest createdAt among all habits
-        let earliest = todayStr;
-        habits.forEach(h => {
-            const created = h.createdAt || (h.checkIns.length > 0 ? h.checkIns[0] : null);
-            if (created && created < earliest) earliest = created;
-        });
+        const habitCreatedAt = habit.createdAt
+            ? habit.createdAt
+            : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
 
-        // Iterate from earliest date to yesterday
-        const current = new Date(earliest);
-        const todayDate = new Date(todayStr);
+        if (!habitCreatedAt) return;
 
-        // Determine current week end to identify unsettled week dates
-        const logicalToday = new Date(todayStr);
-        const currentWeekStart = this.getWeekStart(logicalToday);
-        const currentWeekEnd = new Date(currentWeekStart);
-        currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
-        const currentWeekEndStr = this.formatDateSimple(currentWeekEnd);
-        const currentWeekStartStr = this.formatDateSimple(currentWeekStart);
+        if (habit.type === 'daily') {
+            // For daily habits: iterate from createdAt to yesterday,
+            // record each active date; add +1 for dates without check-in
+            const current = new Date(habitCreatedAt);
+            const todayDate = new Date(todayStr);
 
-        while (current < todayDate) {
-            const dateStr = this.formatDateSimple(current);
-            // For dates in the current unsettled week, always re-calculate (overwrite old snapshot)
-            // For past settled dates, only snapshot if not already done
-            const isInCurrentWeek = dateStr >= currentWeekStartStr && dateStr <= currentWeekEndStr;
-            if (!snapshot[dateStr] || isInCurrentWeek) {
-                const result = this._calcSnapshotForDate(dateStr, habits, todayStr);
-                if (result.hasHabits) {
-                    snapshot[dateStr] = { miss: result.miss, hasHabits: true };
-                } else if (isInCurrentWeek) {
-                    // Clean up stale snapshot for current week dates that no longer have habits
-                    delete snapshot[dateStr];
+            while (current < todayDate) {
+                const dateStr = this.formatDateSimple(current);
+                if (dateStr >= habitCreatedAt) {
+                    if (!habit.checkIns.includes(dateStr)) {
+                        // Missed: add +1 compensation
+                        compensation[dateStr] = (compensation[dateStr] || 0) + 1;
+                    } else {
+                        // Checked in: ensure date is recorded (for hasHabitsOnDate)
+                        if (!(dateStr in compensation)) {
+                            compensation[dateStr] = 0;
+                        }
+                    }
                 }
+                current.setDate(current.getDate() + 1);
             }
-            current.setDate(current.getDate() + 1);
-        }
+        } else if (habit.type === 'weekly') {
+            // For weekly habits: iterate week by week,
+            // only count fully settled weeks (todayStr > weekEndStr)
+            const current = new Date(habitCreatedAt);
+            const todayDate = new Date(todayStr);
+            const processedWeeks = new Set();
 
-        this.saveMissSnapshot(snapshot);
-    }
+            while (current < todayDate) {
+                const dateStr = this.formatDateSimple(current);
+                const weekStart = this.getWeekStart(new Date(dateStr));
+                const weekStartStr = this.formatDateSimple(weekStart);
 
-    // Calculate miss count for a specific date using provided habits array
-    _calcSnapshotForDate(dateStr, habits, todayStr) {
-        let hasHabits = false;
-        let totalMiss = 0;
-
-        if (dateStr >= todayStr) {
-            return { hasHabits: false, miss: 0 };
-        }
-
-        habits.forEach(habit => {
-            const habitCreatedAt = habit.createdAt
-                ? habit.createdAt
-                : (habit.checkIns.length > 0 ? habit.checkIns[0] : null);
-
-            if (habit.type === 'daily') {
-                if (!habitCreatedAt || dateStr < habitCreatedAt) return;
-                hasHabits = true;
-                if (!habit.checkIns.includes(dateStr)) {
-                    totalMiss += 1;
+                // Skip if we already processed this week
+                if (processedWeeks.has(weekStartStr)) {
+                    current.setDate(current.getDate() + 1);
+                    continue;
                 }
-            } else if (habit.type === 'weekly') {
-                const date = new Date(dateStr);
-                const weekStart = this.getWeekStart(date);
+                processedWeeks.add(weekStartStr);
+
                 const weekEnd = new Date(weekStart);
                 weekEnd.setDate(weekEnd.getDate() + 6);
                 const weekEndStr = this.formatDateSimple(weekEnd);
-                const weekStartStr = this.formatDateSimple(weekStart);
 
-                if (!habitCreatedAt || habitCreatedAt > weekEndStr) return;
+                // Only count if week is fully settled
+                if (todayStr <= weekEndStr) {
+                    current.setDate(current.getDate() + 1);
+                    continue;
+                }
 
-                // Only calculate weekly miss if the week is fully past
-                if (todayStr <= weekEndStr) return;
+                // Habit must exist within this week
+                if (habitCreatedAt > weekEndStr) {
+                    current.setDate(current.getDate() + 1);
+                    continue;
+                }
 
-                hasHabits = true;
-
+                // Count check-ins for this week
                 let weeklyCheckIns = 0;
                 habit.checkIns.forEach(checkInDate => {
                     if (checkInDate >= weekStartStr && checkInDate <= weekEndStr) {
                         weeklyCheckIns++;
                     }
                 });
-                totalMiss += Math.max(0, habit.weeklyGoal - Math.min(weeklyCheckIns, habit.weeklyGoal));
-            }
-        });
 
-        return { hasHabits, miss: totalMiss };
+                const weekMiss = Math.max(0, habit.weeklyGoal - Math.min(weeklyCheckIns, habit.weeklyGoal));
+                // Add compensation to each day of this settled week
+                // (even if weekMiss is 0, record the date for hasHabitsOnDate)
+                const dayInWeek = new Date(weekStart);
+                for (let i = 0; i < 7; i++) {
+                    const dayStr = this.formatDateSimple(dayInWeek);
+                    // Only for settled dates and dates after habit creation
+                    if (dayStr < todayStr && dayStr >= habitCreatedAt) {
+                        if (weekMiss > 0) {
+                            compensation[dayStr] = (compensation[dayStr] || 0) + weekMiss;
+                        } else if (!(dayStr in compensation)) {
+                            compensation[dayStr] = 0;
+                        }
+                    }
+                    dayInWeek.setDate(dayInWeek.getDate() + 1);
+                }
+
+                current.setDate(current.getDate() + 1);
+            }
+        }
+
+        this.saveDeletedMissCompensation(compensation);
     }
 
     // Check in habit
@@ -1322,10 +1315,11 @@ class RecordModule {
 
     // Check if any habits (daily or weekly) are associated with a given date
     hasHabitsOnDate(dateStr) {
-        // Priority: check snapshot first (preserves history after habit deletion)
-        const snapshot = this.dataManager.getMissSnapshot();
-        if (snapshot[dateStr]) {
-            return snapshot[dateStr].hasHabits;
+        // Check compensation: if there's compensation for this date,
+        // it means a deleted habit was active on this date
+        const compensation = this.dataManager.getDeletedMissCompensation();
+        if (dateStr in compensation) {
+            return true;
         }
 
         const habits = this.dataManager.getHabits();
@@ -1365,12 +1359,6 @@ class RecordModule {
 
     // Calculate daily miss count for a given date
     calculateDailyMissCount(dateStr) {
-        // Priority: check snapshot first (preserves history after habit deletion)
-        const snapshot = this.dataManager.getMissSnapshot();
-        if (snapshot[dateStr]) {
-            return snapshot[dateStr].miss;
-        }
-
         const habits = this.dataManager.getHabits();
         let totalMiss = 0;
         
@@ -1418,6 +1406,10 @@ class RecordModule {
             }
         });
         
+        // Add compensation from deleted habits
+        const compensation = this.dataManager.getDeletedMissCompensation();
+        totalMiss += (compensation[dateStr] || 0);
+
         return totalMiss;
     }
 
@@ -1580,7 +1572,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (oldUid) {
             localStorage.removeItem(`sleepRecords_${oldUid}`);
             localStorage.removeItem(`habitRecords_${oldUid}`);
-            localStorage.removeItem(`missSnapshot_${oldUid}`);
+            localStorage.removeItem(`deletedMissCompensation_${oldUid}`);
+            localStorage.removeItem(`missSnapshot_${oldUid}`); // clean up legacy key
         }
     }
 
@@ -1709,10 +1702,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     localStorage.setItem(dataManager.HABIT_KEY, JSON.stringify(Array.from(map.values())));
                 }
-                if (cloud.missSnapshot) {
-                    const localSnapshot = dataManager.getMissSnapshot();
-                    const merged = { ...cloud.missSnapshot, ...localSnapshot };
-                    dataManager.saveMissSnapshot(merged);
+                if (cloud.deletedMissCompensation) {
+                    const localComp = dataManager.getDeletedMissCompensation();
+                    const merged = { ...cloud.deletedMissCompensation };
+                    for (const [dateStr, val] of Object.entries(localComp)) {
+                        merged[dateStr] = Math.max(merged[dateStr] || 0, val);
+                    }
+                    dataManager.saveDeletedMissCompensation(merged);
                 }
                 cloudSync.updateStatus('success');
                 console.log(`[CloudSync] Merged pre-pulled cloud data for uid: ${uid}`);

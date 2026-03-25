@@ -613,42 +613,33 @@ class SleepModule {
         const isLongRange = this.currentRange === 'halfYear' || this.currentRange === 'year';
         const dataCount = dates.length;
 
-        // Dynamic label interval: show fewer labels when data is dense
-        let labelInterval = 0;
+        // Dynamic label interval: aim for ~8-10 labels on x-axis
+        const maxLabels = 9;
+        let labelInterval = dataCount > maxLabels ? Math.floor(dataCount / maxLabels) - 1 : 0;
         let labelFontSize = 11;
         let symbolSize = 8;
         let lineWidth = 3;
         if (dataCount > 90) {
-            labelInterval = Math.floor(dataCount / 15);
             labelFontSize = 9;
-            symbolSize = 4;
-            lineWidth = 2;
+            symbolSize = 3;
+            lineWidth = 1.5;
         } else if (dataCount > 30) {
-            labelInterval = Math.floor(dataCount / 12);
             labelFontSize = 10;
-            symbolSize = 6;
-            lineWidth = 2.5;
+            symbolSize = 5;
+            lineWidth = 2;
         }
 
-        // DataZoom: enable slider for half-year / year ranges
+        // DataZoom: enable touch-friendly inside zoom for half-year / year ranges
         const dataZoom = isLongRange ? [
-            {
-                type: 'slider',
-                xAxisIndex: 0,
-                start: dataCount > 30 ? Math.max(0, 100 - (30 / dataCount) * 100) : 0,
-                end: 100,
-                height: 20,
-                bottom: 8,
-                borderColor: '#ddd',
-                fillerColor: 'rgba(79, 70, 229, 0.15)',
-                handleStyle: { color: '#4f46e5' },
-                textStyle: { fontSize: 10 }
-            },
             {
                 type: 'inside',
                 xAxisIndex: 0,
+                start: dataCount > 30 ? Math.max(0, 100 - (30 / dataCount) * 100) : 0,
+                end: 100,
                 zoomOnMouseWheel: true,
-                moveOnMouseMove: true
+                moveOnMouseMove: true,
+                moveOnMouseWheel: false,
+                preventDefaultMouseMove: true
             }
         ] : [];
 
@@ -694,6 +685,7 @@ class SleepModule {
                 data: times,
                 type: 'line',
                 smooth: true,
+                showAllSymbol: true,
                 symbol: 'circle',
                 symbolSize: symbolSize,
                 lineStyle: {
@@ -723,7 +715,7 @@ class SleepModule {
             grid: {
                 left: '50',
                 right: '20',
-                bottom: isLongRange ? '80' : '60',
+                bottom: '60',
                 top: '20'
             }
         };
@@ -754,13 +746,19 @@ class SleepModule {
                 break;
         }
         
+        // Build a lookup map for O(1) access
+        const recordMap = {};
+        for (const r of records) {
+            recordMap[r.date] = r;
+        }
+        
         const dates = [];
         const times = [];
         
         const current = new Date(startDate);
         while (current <= now) {
             const dateStr = this.dataManager.formatDate(current);
-            const record = records.find(r => r.date === dateStr);
+            const record = recordMap[dateStr];
             
             if (record) {
                 dates.push(dateStr.substring(5));

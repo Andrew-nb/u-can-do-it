@@ -185,7 +185,7 @@
     flex-shrink: 0;
 }
 
-/* Small screens: title wraps into 2 lines (4 chars each), buttons stay horizontal */
+/* Small screens: title 2 lines + vertical buttons in one row */
 @media (max-width: 480px) {
     .chart-title {
         white-space: normal;
@@ -196,9 +196,17 @@
     .chart-title span {
         display: block;
     }
+    .time-range-group {
+        flex-direction: row;
+        gap: 4px;
+    }
     .time-range-btn {
-        padding: 0.35rem 0.55rem;
-        font-size: 0.75rem;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        padding: 0.5rem 0.25rem;
+        font-size: 0.7rem;
+        letter-spacing: 0.15em;
+        line-height: 1;
     }
 }
 

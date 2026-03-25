@@ -613,9 +613,8 @@ class SleepModule {
         const isLongRange = this.currentRange === 'halfYear' || this.currentRange === 'year';
         const dataCount = dates.length;
 
-        // Dynamic label interval: aim for ~8-10 labels on x-axis
+        // Dynamic label: first & last always shown, rest evenly distributed (~8-10 total)
         const maxLabels = 9;
-        let labelInterval = dataCount > maxLabels ? Math.ceil(dataCount / maxLabels) - 1 : 0;
         let labelFontSize = 11;
         let symbolSize = 8;
         let lineWidth = 3;
@@ -628,6 +627,24 @@ class SleepModule {
             symbolSize = 5;
             lineWidth = 2;
         }
+
+        // Build a set of indices that should show labels
+        // Priority: first and last, then evenly fill the middle
+        let labelIndexSet = null;
+        if (dataCount > maxLabels) {
+            const innerCount = maxLabels - 2; // slots between first and last
+            const step = (dataCount - 1) / (innerCount + 1);
+            const indices = new Set();
+            indices.add(0);
+            indices.add(dataCount - 1);
+            for (let i = 1; i <= innerCount; i++) {
+                indices.add(Math.round(step * i));
+            }
+            labelIndexSet = indices;
+        }
+        const labelIntervalFn = labelIndexSet
+            ? (index) => labelIndexSet.has(index)
+            : () => true;
 
         // DataZoom: for half-year / year ranges, use slider + inside gesture
         const dataZoom = isLongRange ? [
@@ -689,12 +706,12 @@ class SleepModule {
                 data: dates,
                 axisTick: {
                     alignWithLabel: true,
-                    interval: labelInterval
+                    interval: (index) => labelIntervalFn(index)
                 },
                 axisLabel: {
                     rotate: 45,
                     fontSize: labelFontSize,
-                    interval: labelInterval
+                    interval: (index) => labelIntervalFn(index)
                 }
             },
             yAxis: {

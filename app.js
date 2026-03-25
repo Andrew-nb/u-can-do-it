@@ -615,13 +615,13 @@ class SleepModule {
 
         // Dynamic label interval: aim for ~8-10 labels on x-axis
         const maxLabels = 9;
-        let labelInterval = dataCount > maxLabels ? Math.floor(dataCount / maxLabels) - 1 : 0;
+        let labelInterval = dataCount > maxLabels ? Math.ceil(dataCount / maxLabels) - 1 : 0;
         let labelFontSize = 11;
         let symbolSize = 8;
         let lineWidth = 3;
         if (dataCount > 90) {
             labelFontSize = 9;
-            symbolSize = 3;
+            symbolSize = 4;
             lineWidth = 1.5;
         } else if (dataCount > 30) {
             labelFontSize = 10;
@@ -629,17 +629,44 @@ class SleepModule {
             lineWidth = 2;
         }
 
-        // DataZoom: enable touch-friendly inside zoom for half-year / year ranges
+        // DataZoom: for half-year / year ranges, use slider + inside gesture
         const dataZoom = isLongRange ? [
             {
-                type: 'inside',
+                type: 'slider',
                 xAxisIndex: 0,
                 start: dataCount > 30 ? Math.max(0, 100 - (30 / dataCount) * 100) : 0,
                 end: 100,
+                height: 30,
+                bottom: 6,
+                handleSize: '120%',
+                handleIcon: 'path://M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+                handleStyle: {
+                    color: '#4f46e5',
+                    shadowBlur: 3,
+                    shadowColor: 'rgba(0, 0, 0, 0.2)',
+                    shadowOffsetX: 1,
+                    shadowOffsetY: 1
+                },
+                borderColor: '#e5e7eb',
+                fillerColor: 'rgba(79, 70, 229, 0.12)',
+                backgroundColor: '#f9fafb',
+                dataBackground: {
+                    lineStyle: { color: '#a5b4fc' },
+                    areaStyle: { color: 'rgba(79, 70, 229, 0.08)' }
+                },
+                selectedDataBackground: {
+                    lineStyle: { color: '#4f46e5' },
+                    areaStyle: { color: 'rgba(79, 70, 229, 0.15)' }
+                },
+                textStyle: { fontSize: 10, color: '#6b7280' },
+                brushSelect: false
+            },
+            {
+                type: 'inside',
+                xAxisIndex: 0,
                 zoomOnMouseWheel: true,
-                moveOnMouseMove: true,
-                moveOnMouseWheel: false,
-                preventDefaultMouseMove: true
+                moveOnMouseMove: false,
+                moveOnMouseWheel: false
             }
         ] : [];
 
@@ -660,6 +687,10 @@ class SleepModule {
             xAxis: {
                 type: 'category',
                 data: dates,
+                axisTick: {
+                    alignWithLabel: true,
+                    interval: labelInterval
+                },
                 axisLabel: {
                     rotate: 45,
                     fontSize: labelFontSize,
@@ -715,7 +746,7 @@ class SleepModule {
             grid: {
                 left: '50',
                 right: '20',
-                bottom: '60',
+                bottom: isLongRange ? '85' : '60',
                 top: '20'
             }
         };

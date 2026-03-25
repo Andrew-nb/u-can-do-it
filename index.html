@@ -11,9 +11,8 @@
 <link rel="apple-touch-icon" sizes="152x152" href="icon-v2.png">
 <link rel="apple-touch-icon" sizes="120x120" href="icon-v2.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-v2.png">
-    <link rel="manifest" href="manifest.json">
     <script>
-    // Dynamically override manifest with uid in start_url (only when uid exists)
+    // Dynamically generate manifest with uid in start_url
     // so that "Add to Home Screen → Web App" preserves the user identity
     (function() {
         var uid = new URLSearchParams(window.location.search).get('uid')
@@ -22,39 +21,32 @@
                     var m = document.cookie.match(/(?:^|; )uid=([^;]*)/);
                     return m ? decodeURIComponent(m[1]) : '';
                 })();
-        // Only override manifest when uid is available
-        if (uid) {
-            var startUrl = './index.html?uid=' + encodeURIComponent(uid);
-            var manifest = {
-                name: '\u81ea\u5f8b',
-                short_name: '\u81ea\u5f8b',
-                description: '\u81ea\u5f8b\u6253\u5361\u5e94\u7528',
-                start_url: startUrl,
-                display: 'standalone',
-                background_color: '#ffffff',
-                theme_color: '#4f46e5',
-                icons: [
-                    { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-                    { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-                    { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-                    { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                    { src: 'icon-v2.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
-                ]
-            };
-            var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-            // Remove the static manifest link and replace with blob version
-            var existingLink = document.querySelector('link[rel="manifest"]');
-            if (existingLink) existingLink.remove();
-            var link = document.createElement('link');
-            link.rel = 'manifest';
-            link.href = URL.createObjectURL(blob);
-            document.head.appendChild(link);
-        }
-        // If no uid, keep the static manifest.json link (already in HTML)
+        var startUrl = uid ? './index.html?uid=' + encodeURIComponent(uid) : './index.html';
+        var manifest = {
+            name: '\u81ea\u5f8b',
+            short_name: '\u81ea\u5f8b',
+            description: '\u81ea\u5f8b\u6253\u5361\u5e94\u7528',
+            start_url: startUrl,
+            display: 'standalone',
+            background_color: '#ffffff',
+            theme_color: '#4f46e5',
+            icons: [
+                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+                { src: 'icon-v2.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
+            ]
+        };
+        var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        var link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = URL.createObjectURL(blob);
+        document.head.appendChild(link);
     })();
     </script>
 <title>自律</title>
-    <link href="https://fonts.loli.net/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="style.css">

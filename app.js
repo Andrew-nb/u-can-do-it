@@ -1691,6 +1691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log(`💾 Saved URL uid to localStorage despite network error: ${uid}`);
             }
             // Don't clear uid — let the user continue, cloud sync will retry later
+            alert('⚠️ 数据同步失败\n\n无法连接服务器获取你的打卡和睡眠数据，请检查网络后刷新页面重试。');
         }
     }
 
@@ -1777,10 +1778,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch (e) {
                     console.error('[CloudSync] Merge cached data error:', e);
                     cloudSync.updateStatus('error');
+                    alert('⚠️ 数据合并失败\n\n云端数据处理出错，请刷新页面重试。如果问题持续，请联系开发者。');
                 }
             } else {
                 // No cached data (e.g. network fallback case) — pull fresh
-                await cloudSync.pull(dataManager);
+                const pullSuccess = await cloudSync.pull(dataManager);
+                if (!pullSuccess) {
+                    alert('⚠️ 数据同步失败\n\n无法从云端拉取你的打卡和睡眠数据，请检查网络后刷新页面重试。');
+                }
             }
         }
         nickname = localStorage.getItem('nickname') || nickname;

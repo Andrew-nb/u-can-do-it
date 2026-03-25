@@ -1733,8 +1733,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ---- Step 3: Register Service Worker for PWA support ----
-    if ('serviceWorker' in navigator) {
+    // iOS: skip SW registration so Safari saves the full URL (with ?uid=xxx)
+    // when user taps "Add to Home Screen". apple-mobile-web-app-capable meta tag
+    // ensures fullscreen display on iOS without needing a SW.
+    // Android/other: register SW so Chrome recognizes PWA install criteria.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if ('serviceWorker' in navigator && !isIOS) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
+    } else if (isIOS && 'serviceWorker' in navigator) {
+        // Unregister any previously registered SW on iOS to ensure clean state
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(reg => reg.unregister());
+        });
     }
 
     // ---- Step 4: Initialize data & sync ----

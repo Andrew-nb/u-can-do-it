@@ -642,10 +642,6 @@ class SleepModule {
             }
             labelIndexSet = indices;
         }
-        const labelIntervalFn = labelIndexSet
-            ? (index) => labelIndexSet.has(index)
-            : () => true;
-
         // DataZoom: for half-year / year ranges, use slider + inside gesture
         const dataZoom = isLongRange ? [
             {
@@ -706,12 +702,19 @@ class SleepModule {
                 data: dates,
                 axisTick: {
                     alignWithLabel: true,
-                    interval: (index) => labelIntervalFn(index)
+                    interval: (index) => {
+                        if (!labelIndexSet) return true;
+                        return labelIndexSet.has(index);
+                    }
                 },
                 axisLabel: {
                     rotate: 45,
                     fontSize: labelFontSize,
-                    interval: (index) => labelIntervalFn(index)
+                    interval: 0,
+                    formatter: (value, index) => {
+                        if (!labelIndexSet) return value;
+                        return labelIndexSet.has(index) ? value : '';
+                    }
                 }
             },
             yAxis: {

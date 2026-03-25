@@ -1621,6 +1621,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Helper: verify uid exists in database via /pull, with retry for network resilience
+    // Returns: { exists: true, data: ... } | { exists: false } | throws on network error
     async function verifyUidInDatabase(uidToVerify, maxRetries = 2) {
         let lastError = null;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -1633,10 +1634,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const res = await fetch(`${WORKER_URL}/pull?uid=${uidToVerify}`);
                 if (!res.ok) throw new Error(`Pull failed: ${res.status}`);
                 const result = await res.json();
-                if (result.success && result.data) {
-                    return result.data; // uid exists, return cloud data
+                console.log(`🔍 Verify uid response:`, JSON.stringify(result));
+                if (result.success) {
+                    // Server confirmed this uid exists (data may or may not be present)
+                    return { exists: true, data: result.data || null };
                 }
-                return null; // uid not found (server responded clearly)
+                // Server explicitly said uid not found (success: false)
+                return { exists: false };
             } catch (e) {
                 lastError = e;
                 console.warn(`Verify attempt ${attempt + 1} failed:`, e.message);
@@ -1659,20 +1663,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (uid) {
         // We have a uid (from localStorage or URL param), verify it exists in database
         try {
-            const cloudData = await verifyUidInDatabase(uid);
-            if (cloudData) {
+            const verifyResult = await verifyUidInDatabase(uid);
+            if (verifyResult.exists) {
                 // uid is valid — save to localStorage (important for URL param case)
                 localStorage.setItem('uid', uid);
-                if (cloudData.nickname) {
-                    nickname = cloudData.nickname;
+                if (verifyResult.data && verifyResult.data.nickname) {
+                    nickname = verifyResult.data.nickname;
                     localStorage.setItem('nickname', nickname);
                 }
                 console.log(`✅ UID verified: ${uid} (${nickname})`);
                 // We already have cloud data, no need to pull again later
-                pulledCloudData = cloudData;
+                if (verifyResult.data) {
+                    pulledCloudData = verifyResult.data;
+                }
             } else {
-                // uid not found in database — clear everything and enter new user flow
-                console.warn(`⚠️ UID ${uid} not found in database, resetting...`);
+                // uid explicitly not found in database — clear everything and enter new user flow
+                console.warn(`⚠️ UID ${uid} not found in database (server returned success:false), resetting...`);
                 clearLocalUserData(uid);
                 uid = '';
                 nickname = '';

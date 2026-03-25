@@ -309,10 +309,11 @@ class DataManager {
                 const weekStartStr = this.formatDateSimple(weekStart);
 
                 if (!habitCreatedAt || habitCreatedAt > weekEndStr) return;
-                hasHabits = true;
 
                 // Only calculate weekly miss if the week is fully past
                 if (todayStr <= weekEndStr) return;
+
+                hasHabits = true;
 
                 let weeklyCheckIns = 0;
                 habit.checkIns.forEach(checkInDate => {

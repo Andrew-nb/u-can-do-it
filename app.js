@@ -174,25 +174,6 @@ class DataManager {
         this.SLEEP_KEY = `sleepRecords_${userKey}`;
         this.HABIT_KEY = `habitRecords_${userKey}`;
         this.MISS_COMPENSATION_KEY = `deletedMissCompensation_${userKey}`;
-
-        // Migrate old missSnapshot data to new compensation format on first load
-        this._migrateSnapshotToCompensation(userKey);
-    }
-
-    // One-time migration: convert old missSnapshot to new compensation format
-    // After migration, remove the old key
-    _migrateSnapshotToCompensation(userKey) {
-        const oldKey = `missSnapshot_${userKey}`;
-        const oldData = localStorage.getItem(oldKey);
-        if (!oldData) return;
-
-        // Old snapshot data exists, but the new compensation system works differently.
-        // Old snapshot stored full miss counts (including existing habits),
-        // while new compensation only stores miss from DELETED habits.
-        // We cannot reliably convert, so just remove the old data.
-        // The compensation map starts fresh — only future deletions will record.
-        localStorage.removeItem(oldKey);
-        console.log('[DataManager] Migrated: removed old missSnapshot key, starting fresh with deletedMissCompensation.');
     }
 
     // Get deleted miss compensation data { "2026-03-10": 1, "2026-03-21": 2, ... }
@@ -1573,7 +1554,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.removeItem(`sleepRecords_${oldUid}`);
             localStorage.removeItem(`habitRecords_${oldUid}`);
             localStorage.removeItem(`deletedMissCompensation_${oldUid}`);
-            localStorage.removeItem(`missSnapshot_${oldUid}`); // clean up legacy key
         }
     }
 

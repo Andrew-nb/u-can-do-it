@@ -1508,7 +1508,7 @@ class NavigationModule {
 // ==================== App Initialization ====================
 
 // Actual Cloudflare Worker URL !!
-const WORKER_URL = 'https://u-can-do-it-api.2519093186.workers.dev';
+const WORKER_URL = 'https://u-can-do-it.pyttt.org';
 
 // Show nickname input modal and return user's input
 function showNicknameModal() {

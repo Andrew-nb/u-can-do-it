@@ -1732,16 +1732,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log(`🔗 Added uid to URL for PWA persistence: ${uid}`);
     }
 
-    // ---- Step 3: Register Service Worker for PWA support ----
-    // iOS: skip SW registration so Safari saves the full URL (with ?uid=xxx)
-    // when user taps "Add to Home Screen". apple-mobile-web-app-capable meta tag
-    // ensures fullscreen display on iOS without needing a SW.
-    // Android/other: register SW so Chrome recognizes PWA install criteria.
+    // ---- Step 3: Service Worker ----
+    // SW is registered early in <head> (before manifest link) so it can intercept
+    // manifest.json?uid=xxx. No need to register again here.
+    // On iOS: unregister any previously registered SW to ensure clean state.
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    if ('serviceWorker' in navigator && !isIOS) {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-    } else if (isIOS && 'serviceWorker' in navigator) {
-        // Unregister any previously registered SW on iOS to ensure clean state
+    if (isIOS && 'serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(registrations => {
             registrations.forEach(reg => reg.unregister());
         });

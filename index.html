@@ -11,9 +11,9 @@
 <link rel="apple-touch-icon" sizes="152x152" href="icon-v2.png">
 <link rel="apple-touch-icon" sizes="120x120" href="icon-v2.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-v2.png">
-    <link rel="manifest" id="manifestLink" href="manifest.json">
     <script>
-    // If uid is present, dynamically replace manifest with uid-aware start_url
+    // Register SW early so it can intercept manifest.json?uid=xxx requests.
+    // Then set the manifest link href with uid param.
     (function() {
         var uid = new URLSearchParams(window.location.search).get('uid')
                 || localStorage.getItem('uid')
@@ -21,25 +21,49 @@
                     var m = document.cookie.match(/(?:^|; )uid=([^;]*)/);
                     return m ? decodeURIComponent(m[1]) : '';
                 })();
-        if (uid) {
-            var manifest = {
-                name: '\u81ea\u5f8b',
-                short_name: '\u81ea\u5f8b',
-                description: '\u81ea\u5f8b\u6253\u5361\u5e94\u7528',
-                start_url: './index.html?uid=' + encodeURIComponent(uid),
-                display: 'standalone',
-                background_color: '#ffffff',
-                theme_color: '#4f46e5',
-                icons: [
-                    { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-                    { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-                    { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-                    { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                    { src: 'icon-v2.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
-                ]
-            };
-            var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-            document.getElementById('manifestLink').href = URL.createObjectURL(blob);
+
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        function setManifest() {
+            var link = document.createElement('link');
+            link.rel = 'manifest';
+            if (uid) {
+                link.href = 'manifest.json?uid=' + encodeURIComponent(uid);
+            } else {
+                link.href = 'manifest.json';
+            }
+            document.head.appendChild(link);
+        }
+
+        if ('serviceWorker' in navigator && !isIOS && uid) {
+            // Register SW first, wait for it to control the page, then add manifest
+            navigator.serviceWorker.register('./sw.js').then(function(reg) {
+                // If SW is already active and controlling, set manifest immediately
+                if (navigator.serviceWorker.controller) {
+                    setManifest();
+                    return;
+                }
+                // Wait for the SW to activate
+                var sw = reg.installing || reg.waiting || reg.active;
+                if (sw) {
+                    sw.addEventListener('statechange', function() {
+                        if (sw.state === 'activated') {
+                            // Claim clients so this page is controlled
+                            setManifest();
+                        }
+                    });
+                }
+            }).catch(function() {
+                // Fallback: set manifest anyway
+                setManifest();
+            });
+        } else if (!isIOS && 'serviceWorker' in navigator) {
+            // No uid, register SW normally and set static manifest
+            navigator.serviceWorker.register('./sw.js').catch(function() {});
+            setManifest();
+        } else {
+            // iOS or no SW support: just set manifest
+            setManifest();
         }
     })();
     </script>

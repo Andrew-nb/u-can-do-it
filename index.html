@@ -11,9 +11,9 @@
 <link rel="apple-touch-icon" sizes="152x152" href="icon-v2.png">
 <link rel="apple-touch-icon" sizes="120x120" href="icon-v2.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-v2.png">
+    <link rel="manifest" id="manifestLink" href="manifest.json">
     <script>
-    // Dynamically generate manifest with uid in start_url
-    // so that "Add to Home Screen → Web App" preserves the user identity
+    // If uid is present, dynamically replace manifest with uid-aware start_url
     (function() {
         var uid = new URLSearchParams(window.location.search).get('uid')
                 || localStorage.getItem('uid')
@@ -21,28 +21,26 @@
                     var m = document.cookie.match(/(?:^|; )uid=([^;]*)/);
                     return m ? decodeURIComponent(m[1]) : '';
                 })();
-        var startUrl = uid ? './index.html?uid=' + encodeURIComponent(uid) : './index.html';
-        var manifest = {
-            name: '\u81ea\u5f8b',
-            short_name: '\u81ea\u5f8b',
-            description: '\u81ea\u5f8b\u6253\u5361\u5e94\u7528',
-            start_url: startUrl,
-            display: 'standalone',
-            background_color: '#ffffff',
-            theme_color: '#4f46e5',
-            icons: [
-                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                { src: 'icon-v2.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
-            ]
-        };
-        var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-        var link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = URL.createObjectURL(blob);
-        document.head.appendChild(link);
+        if (uid) {
+            var manifest = {
+                name: '\u81ea\u5f8b',
+                short_name: '\u81ea\u5f8b',
+                description: '\u81ea\u5f8b\u6253\u5361\u5e94\u7528',
+                start_url: './index.html?uid=' + encodeURIComponent(uid),
+                display: 'standalone',
+                background_color: '#ffffff',
+                theme_color: '#4f46e5',
+                icons: [
+                    { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                    { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+                    { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                    { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+                    { src: 'icon-v2.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
+                ]
+            };
+            var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+            document.getElementById('manifestLink').href = URL.createObjectURL(blob);
+        }
     })();
     </script>
 <title>自律</title>

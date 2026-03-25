@@ -11,9 +11,10 @@
 <link rel="apple-touch-icon" sizes="152x152" href="icon-v2.png">
 <link rel="apple-touch-icon" sizes="120x120" href="icon-v2.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-v2.png">
+    <link rel="manifest" id="manifest-link" href="manifest.json">
     <script>
-    // Dynamically generate manifest with uid in start_url
-    // so that "Add to Home Screen → Web App" preserves the user identity
+    // Dynamically override manifest with uid in start_url (Android only)
+    // If no uid is found, the static manifest.json above is used as fallback
     (function() {
         var uid = new URLSearchParams(window.location.search).get('uid')
                 || localStorage.getItem('uid')
@@ -21,7 +22,8 @@
                     var m = document.cookie.match(/(?:^|; )uid=([^;]*)/);
                     return m ? decodeURIComponent(m[1]) : '';
                 })();
-        var startUrl = uid ? './index.html?uid=' + encodeURIComponent(uid) : './index.html';
+        if (!uid) return; // No uid — keep static manifest.json
+        var startUrl = './index.html?uid=' + encodeURIComponent(uid);
         var manifest = {
             name: '\u81ea\u5f8b',
             short_name: '\u81ea\u5f8b',
@@ -39,10 +41,10 @@
             ]
         };
         var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-        var link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = URL.createObjectURL(blob);
-        document.head.appendChild(link);
+        var link = document.getElementById('manifest-link');
+        if (link) {
+            link.href = URL.createObjectURL(blob);
+        }
     })();
     </script>
 <title>自律</title>

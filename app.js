@@ -1510,82 +1510,102 @@ document.addEventListener('DOMContentLoaded', async () => {
     let uid = localStorage.getItem('uid') || '';
     let nickname = localStorage.getItem('nickname') || '';
     let isNewUser = false;
+    let pulledCloudData = false; // Track if we already pulled during verification
+
+    // Helper: clear all local data associated with a uid
+    function clearLocalUserData(oldUid) {
+        localStorage.removeItem('uid');
+        localStorage.removeItem('nickname');
+        if (oldUid) {
+            localStorage.removeItem(`sleepRecords_${oldUid}`);
+            localStorage.removeItem(`habitRecords_${oldUid}`);
+            localStorage.removeItem(`missSnapshot_${oldUid}`);
+        }
+    }
+
+    // Helper: register new user flow
+    async function registerNewUser() {
+        const newNickname = await showNicknameModal();
+        const result = await CloudSync.register(WORKER_URL, newNickname);
+        if (result.success) {
+            localStorage.setItem('uid', result.uid);
+            localStorage.setItem('nickname', newNickname);
+            console.log(`🆕 New user registered: ${result.uid} (${newNickname})`);
+            return { uid: result.uid, nickname: newNickname };
+        } else {
+            throw new Error('Register failed');
+        }
+    }
+
+    // Helper: verify uid exists in database via /pull, returns cloud data or null
+    async function verifyUidInDatabase(uidToVerify) {
+        const res = await fetch(`${WORKER_URL}/pull?uid=${uidToVerify}`);
+        if (!res.ok) throw new Error(`Pull failed: ${res.status}`);
+        const result = await res.json();
+        if (result.success && result.data) {
+            return result.data; // uid exists, return cloud data
+        }
+        return null; // uid not found
+    }
 
     // ---- Step 1: Determine uid ----
     if (urlUid) {
-        // Old user migration: uid from URL param
+        // URL has uid param — use it as candidate (don't save yet, verify first)
         uid = urlUid;
-        localStorage.setItem('uid', uid);
         // Clean URL: remove ?uid=xxx from address bar
         window.history.replaceState({}, document.title, window.location.pathname);
-        console.log(`🔗 UID loaded from URL: ${uid}`);
+        console.log(`🔗 UID candidate from URL: ${uid}`);
+    }
+
+    // ---- Step 2: Verify or Create ----
+    if (uid) {
+        // We have a uid (from localStorage or URL param), verify it exists in database
+        try {
+            const cloudData = await verifyUidInDatabase(uid);
+            if (cloudData) {
+                // uid is valid — save to localStorage (important for URL param case)
+                localStorage.setItem('uid', uid);
+                if (cloudData.nickname) {
+                    nickname = cloudData.nickname;
+                    localStorage.setItem('nickname', nickname);
+                }
+                console.log(`✅ UID verified: ${uid} (${nickname})`);
+                // We already have cloud data, no need to pull again later
+                pulledCloudData = cloudData;
+            } else {
+                // uid not found in database — clear everything and enter new user flow
+                console.warn(`⚠️ UID ${uid} not found in database, resetting...`);
+                clearLocalUserData(uid);
+                uid = '';
+                nickname = '';
+            }
+        } catch (e) {
+            // Network error — if uid was from localStorage (trusted), keep it; if from URL (untrusted), discard
+            if (urlUid && !localStorage.getItem('uid')) {
+                console.warn('Cannot verify URL uid (network error), ignoring:', e);
+                uid = '';
+                nickname = '';
+            } else {
+                console.warn('UID verification failed (network), proceeding with local uid:', e);
+            }
+        }
     }
 
     if (!uid) {
-        // New user: must set nickname first, then register via Worker
+        // No valid uid — new user must set nickname and register
         isNewUser = true;
-        nickname = await showNicknameModal();
-
         try {
-            const result = await CloudSync.register(WORKER_URL, nickname);
-            if (result.success) {
-                uid = result.uid;
-                localStorage.setItem('uid', uid);
-                localStorage.setItem('nickname', nickname);
-                console.log(`🆕 New user registered: ${uid} (${nickname})`);
-            } else {
-                alert('注册失败，请刷新重试');
-                return;
-            }
+            const result = await registerNewUser();
+            uid = result.uid;
+            nickname = result.nickname;
         } catch (e) {
             console.error('Registration error:', e);
-            alert('网络错误，请检查网络后刷新重试');
+            alert('注册失败，请检查网络后刷新重试');
             return;
         }
     }
 
-    // ---- Step 1.5: Verify uid still exists in database ----
-    if (uid && !isNewUser) {
-        try {
-            const verifyRes = await fetch(`${WORKER_URL}/pull?uid=${uid}`);
-            if (verifyRes.ok) {
-                const verifyResult = await verifyRes.json();
-                // If uid not found in database (no data returned), reset and re-register
-                if (!verifyResult.success || !verifyResult.data) {
-                    console.warn(`⚠️ UID ${uid} not found in database, resetting...`);
-                    localStorage.removeItem('uid');
-                    localStorage.removeItem('nickname');
-                    uid = '';
-                    nickname = '';
-
-                    // Re-enter new user flow
-                    isNewUser = true;
-                    nickname = await showNicknameModal();
-                    try {
-                        const result = await CloudSync.register(WORKER_URL, nickname);
-                        if (result.success) {
-                            uid = result.uid;
-                            localStorage.setItem('uid', uid);
-                            localStorage.setItem('nickname', nickname);
-                            console.log(`🆕 Re-registered as new user: ${uid} (${nickname})`);
-                        } else {
-                            alert('注册失败，请刷新重试');
-                            return;
-                        }
-                    } catch (e) {
-                        console.error('Re-registration error:', e);
-                        alert('网络错误，请检查网络后刷新重试');
-                        return;
-                    }
-                }
-            }
-        } catch (e) {
-            // Network error during verification — skip check, proceed with existing uid
-            console.warn('UID verification failed (network), proceeding with local uid:', e);
-        }
-    }
-
-    // ---- Step 2: Generate manifest (no token needed now) ----
+    // ---- Step 3: Generate manifest ----
     const manifestObj = {
         name: "自律",
         short_name: "自律",
@@ -1606,21 +1626,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     manifestLink.href = manifestUrl;
     document.head.appendChild(manifestLink);
 
-    // ---- Step 3: Initialize data & sync ----
+    // ---- Step 4: Initialize data & sync ----
     const dataManager = new DataManager(uid);
     const cloudSync = new CloudSync(WORKER_URL, uid);
     window.cloudSync = cloudSync;
 
-    // Pull cloud data first, then initialize UI
+    // Use already-pulled cloud data if available, otherwise pull fresh
     if (cloudSync.isEnabled()) {
-        await cloudSync.pull(dataManager);
-        // After pull, update nickname from cloud data (for old users)
+        if (pulledCloudData && !isNewUser) {
+            // We already pulled during verification, merge directly
+            cloudSync.updateStatus('syncing');
+            try {
+                const cloud = pulledCloudData;
+                if (cloud.sleepRecords && cloud.sleepRecords.length > 0) {
+                    const local = dataManager.getSleepRecords();
+                    const map = new Map();
+                    cloud.sleepRecords.forEach(r => map.set(r.date, r));
+                    local.forEach(r => map.set(r.date, r));
+                    const merged = Array.from(map.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
+                    localStorage.setItem(dataManager.SLEEP_KEY, JSON.stringify(merged));
+                }
+                if (cloud.habitRecords && cloud.habitRecords.length > 0) {
+                    const local = dataManager.getHabits();
+                    const map = new Map();
+                    cloud.habitRecords.forEach(h => map.set(h.id, { ...h }));
+                    local.forEach(h => {
+                        if (map.has(h.id)) {
+                            const existing = map.get(h.id);
+                            const allCheckIns = new Set([...existing.checkIns, ...h.checkIns]);
+                            existing.checkIns = Array.from(allCheckIns).sort();
+                            existing.name = h.name;
+                            existing.type = h.type;
+                            existing.weeklyGoal = h.weeklyGoal;
+                        } else {
+                            map.set(h.id, { ...h });
+                        }
+                    });
+                    localStorage.setItem(dataManager.HABIT_KEY, JSON.stringify(Array.from(map.values())));
+                }
+                if (cloud.missSnapshot) {
+                    const localSnapshot = dataManager.getMissSnapshot();
+                    const merged = { ...cloud.missSnapshot, ...localSnapshot };
+                    dataManager.saveMissSnapshot(merged);
+                }
+                cloudSync.updateStatus('success');
+                console.log(`[CloudSync] Merged pre-pulled cloud data for uid: ${uid}`);
+            } catch (e) {
+                console.error('[CloudSync] Merge pre-pulled data error:', e);
+                cloudSync.updateStatus('error');
+            }
+        } else {
+            await cloudSync.pull(dataManager);
+        }
         nickname = localStorage.getItem('nickname') || nickname;
     } else {
         cloudSync.updateStatus('disabled');
     }
 
-    // ---- Step 4: Initialize UI modules ----
+    // ---- Step 5: Initialize UI modules ----
     const sleepModule = new SleepModule(dataManager);
     const habitModule = new HabitModule(dataManager);
     const recordModule = new RecordModule(dataManager);

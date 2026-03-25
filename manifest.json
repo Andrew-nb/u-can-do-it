@@ -2,7 +2,7 @@
     "name": "自律",
     "short_name": "自律",
     "description": "自律打卡应用",
-    "start_url": "./index.html",
+    "start_url": "./index.html?v=clear-redirect",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#4f46e5",

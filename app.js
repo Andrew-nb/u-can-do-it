@@ -1666,26 +1666,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ---- Step 3: Generate manifest ----
-    const manifestObj = {
-        name: "自律",
-        short_name: "自律",
-        description: "自律打卡应用",
-        start_url: "./index.html",
-        display: "standalone",
-        background_color: "#ffffff",
-        theme_color: "#4f46e5",
-        icons: [
-            { src: "icon-v2.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-            { src: "icon-v2.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
-        ]
-    };
-    const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
-    const manifestUrl = URL.createObjectURL(manifestBlob);
-    const manifestLink = document.createElement('link');
-    manifestLink.rel = 'manifest';
-    manifestLink.href = manifestUrl;
-    document.head.appendChild(manifestLink);
+    // ---- Step 3: Register Service Worker for PWA support ----
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
 
     // ---- Step 4: Initialize data & sync ----
     const dataManager = new DataManager(uid);

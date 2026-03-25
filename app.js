@@ -1587,11 +1587,23 @@ function showNicknameModal() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Cookie helpers — used to share uid between Safari and standalone PWA on iOS
+    function setCookie(name, value, days) {
+        if (days === undefined) days = 365;
+        const expires = new Date(Date.now() + days * 864e5).toUTCString();
+        document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + expires + ';path=/;SameSite=Lax';
+    }
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const urlUid = urlParams.get('uid');
 
-    let uid = localStorage.getItem('uid') || '';
-    let nickname = localStorage.getItem('nickname') || '';
+    // Try localStorage first, then fall back to Cookie (for iOS PWA standalone mode)
+    let uid = localStorage.getItem('uid') || getCookie('uid') || '';
+    let nickname = localStorage.getItem('nickname') || getCookie('nickname') || '';
     let isNewUser = false;
     let cloudDataFromVerify = null; // Cache cloud data from verify to reuse in Step 4
 
@@ -1613,6 +1625,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (result.success) {
             localStorage.setItem('uid', result.uid);
             localStorage.setItem('nickname', newNickname);
+            setCookie('uid', result.uid);
+            setCookie('nickname', newNickname);
             console.log(`🆕 New user registered: ${result.uid} (${newNickname})`);
             return { uid: result.uid, nickname: newNickname };
         } else {
@@ -1664,11 +1678,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const verifyResult = await verifyUidInDatabase(uid);
             if (verifyResult.exists) {
-                // uid is valid — save to localStorage (important for URL param case)
+                // uid is valid — save to localStorage + Cookie (important for URL param case)
                 localStorage.setItem('uid', uid);
+                setCookie('uid', uid);
                 if (verifyResult.data && verifyResult.data.nickname) {
                     nickname = verifyResult.data.nickname;
                     localStorage.setItem('nickname', nickname);
+                    setCookie('nickname', nickname);
                 }
                 // Cache the full cloud data to reuse in Step 4 (avoid duplicate /pull request)
                 cloudDataFromVerify = verifyResult.data;
@@ -1685,9 +1701,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // rather than forcing a new registration which would lose user data
             console.warn('UID verification failed (network), trusting uid and proceeding:', e);
             if (urlUid) {
-                // Save URL uid to localStorage so it persists for next visit
+                // Save URL uid to localStorage + Cookie so it persists for next visit
                 localStorage.setItem('uid', uid);
-                console.log(`💾 Saved URL uid to localStorage despite network error: ${uid}`);
+                setCookie('uid', uid);
+                console.log(`💾 Saved URL uid to localStorage+cookie despite network error: ${uid}`);
             }
             // Don't clear uid — let the user continue, cloud sync will retry later
             alert('⚠️ 数据同步失败\n\n无法连接服务器获取你的打卡和睡眠数据，请检查网络后刷新页面重试。');

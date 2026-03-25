@@ -1,73 +1,48 @@
-// ==================== GitHub Gist Cloud Sync ====================
+// ==================== Cloud Sync via Cloudflare Worker ====================
 class CloudSync {
-    constructor(token) {
-        // GIST_ID is fixed, token is passed from URL parameter
-        this.GIST_ID = '93cf2f505010337d45d7cf9b740a4068';
-        this.GH_TOKEN = token || '';
-        this.FILENAME = 'self_discipline_data.json';
-        this.userKey = 'default';
+    constructor(workerUrl, uid) {
+        // Worker URL (public, safe to expose)
+        this.WORKER_URL = workerUrl;
+        this.uid = uid || '';
 
-        this.enabled = !!(this.GIST_ID && this.GH_TOKEN);
+        this.enabled = !!(this.WORKER_URL && this.uid);
         this.syncing = false;
         this.pushTimer = null;
     }
 
-    setUserKey(key) {
-        this.userKey = key;
+    setUid(uid) {
+        this.uid = uid;
+        this.enabled = !!(this.WORKER_URL && this.uid);
     }
 
     isEnabled() {
         return this.enabled;
     }
 
-    // Push local data to Gist
+    // Push local data to Worker -> Gist
     async push(dataManager) {
         if (!this.enabled || this.syncing) return;
         this.syncing = true;
         this.updateStatus('syncing');
 
         try {
-            // First get current Gist content to preserve other users' data
-            const getRes = await fetch(`https://api.github.com/gists/${this.GIST_ID}`, {
-                headers: {
-                    'Authorization': `Bearer ${this.GH_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-            let allData = {};
-            if (getRes.ok) {
-                const gist = await getRes.json();
-                const file = gist.files[this.FILENAME];
-                if (file && file.content) {
-                    allData = JSON.parse(file.content);
-                }
-            }
-
-            // Update only current user's data
-            allData[this.userKey] = {
+            const nickname = localStorage.getItem('nickname') || '未知用户';
+            const body = {
+                nickname,
                 sleepRecords: dataManager.getSleepRecords(),
                 habitRecords: dataManager.getHabits(),
                 missSnapshot: dataManager.getMissSnapshot(),
-                lastSync: new Date().toISOString()
             };
 
-            const res = await fetch(`https://api.github.com/gists/${this.GIST_ID}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${this.GH_TOKEN}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({
-                    files: {
-                        [this.FILENAME]: { content: JSON.stringify(allData, null, 2) }
-                    }
-                }),
+            const res = await fetch(`${this.WORKER_URL}/push?uid=${this.uid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
             });
 
             if (!res.ok) throw new Error(`Push failed: ${res.status}`);
             this.updateStatus('success');
-            console.log(`[CloudSync] Push success for user: ${this.userKey}`);
+            console.log(`[CloudSync] Push success for uid: ${this.uid}`);
         } catch (e) {
             console.error('[CloudSync] Push error:', e);
             this.updateStatus('error');
@@ -83,34 +58,27 @@ class CloudSync {
         this.pushTimer = setTimeout(() => this.push(dataManager), 3000);
     }
 
-    // Pull data from Gist to local
+    // Pull data from Worker -> local
     async pull(dataManager) {
         if (!this.enabled) return false;
         this.syncing = true;
         this.updateStatus('syncing');
 
         try {
-            const res = await fetch(`https://api.github.com/gists/${this.GIST_ID}`, {
-                headers: {
-                    'Authorization': `Bearer ${this.GH_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-            });
-
+            const res = await fetch(`${this.WORKER_URL}/pull?uid=${this.uid}`);
             if (!res.ok) throw new Error(`Pull failed: ${res.status}`);
 
-            const gist = await res.json();
-            const file = gist.files[this.FILENAME];
-            if (!file || !file.content) {
+            const result = await res.json();
+            if (!result.success || !result.data) {
                 this.updateStatus('success');
                 return false;
             }
 
-            const allData = JSON.parse(file.content);
-            const cloud = allData[this.userKey];
-            if (!cloud) {
-                this.updateStatus('success');
-                return false;
+            const cloud = result.data;
+
+            // Update nickname from cloud if exists
+            if (cloud.nickname) {
+                localStorage.setItem('nickname', cloud.nickname);
             }
 
             // Merge sleep records (cloud as base, local overrides by date)
@@ -152,7 +120,7 @@ class CloudSync {
             }
 
             this.updateStatus('success');
-            console.log(`[CloudSync] Pull success for user: ${this.userKey}`);
+            console.log(`[CloudSync] Pull success for uid: ${this.uid}`);
             return true;
         } catch (e) {
             console.error('[CloudSync] Pull error:', e);
@@ -161,6 +129,17 @@ class CloudSync {
         } finally {
             this.syncing = false;
         }
+    }
+
+    // Register new user via Worker
+    static async register(workerUrl, nickname) {
+        const res = await fetch(`${workerUrl}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname }),
+        });
+        if (!res.ok) throw new Error(`Register failed: ${res.status}`);
+        return await res.json(); // { success, uid, nickname }
     }
 
     // Update the sync indicator icon
@@ -522,9 +501,9 @@ class SleepModule {
             greetingText = '晚上好';
         }
 
-        // Get username from cloud_sync_user, fallback to '陌生人'
-        const userName = localStorage.getItem('cloud_sync_user');
-        const displayName = (userName && userName !== 'default') ? userName : '陌生人';
+        // Get nickname from localStorage
+        const userName = localStorage.getItem('nickname');
+        const displayName = userName || '陌生人';
 
         document.getElementById('sleepGreeting').textContent = `${displayName}，${greetingText}`;
     }
@@ -1466,37 +1445,111 @@ class NavigationModule {
 }
 
 // ==================== App Initialization ====================
-document.addEventListener('DOMContentLoaded', async () => {
-    // Parse token and user from URL parameters, with localStorage fallback
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    const urlUser = urlParams.get('user');
 
-    let token, userKey;
-    if (urlToken) {
-        // URL has token, save to localStorage for future use
-        token = urlToken;
-        userKey = urlUser || 'default';
-        localStorage.setItem('cloud_sync_token', token);
-        localStorage.setItem('cloud_sync_user', userKey);
-        console.log('🔑 Token saved to localStorage for future use');
-    } else {
-        // No URL token, try to read from localStorage
-        token = localStorage.getItem('cloud_sync_token') || '';
-        userKey = localStorage.getItem('cloud_sync_user') || 'default';
-        if (token) {
-            console.log('🔑 Token loaded from localStorage');
+// Actual Cloudflare Worker URL !!
+const WORKER_URL = 'https://u-can-do-it-api.2519093186.workers.dev';
+
+// Show nickname input modal and return user's input
+function showNicknameModal() {
+    return new Promise((resolve) => {
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+
+        const modal = document.createElement('div');
+        modal.style.cssText = 'background:white;border-radius:16px;padding:32px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+        modal.innerHTML = `
+            <div style="font-size:48px;margin-bottom:16px;">👋</div>
+            <h2 style="font-size:22px;font-weight:bold;color:#1f2937;margin-bottom:8px;">欢迎使用自律打卡！</h2>
+            <p style="color:#6b7280;margin-bottom:24px;font-size:14px;">请设置你的昵称，设置后即可开始使用</p>
+            <input id="nicknameInput" type="text" placeholder="输入你的昵称" maxlength="20"
+                style="width:100%;padding:12px 16px;border:2px solid #e5e7eb;border-radius:10px;font-size:16px;outline:none;box-sizing:border-box;margin-bottom:8px;"
+            />
+            <p id="nicknameError" style="color:#ef4444;font-size:12px;min-height:18px;margin-bottom:16px;"></p>
+            <button id="nicknameSubmit"
+                style="width:100%;padding:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;">
+                开始使用 🚀
+            </button>
+        `;
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        const input = modal.querySelector('#nicknameInput');
+        const errorEl = modal.querySelector('#nicknameError');
+        const submitBtn = modal.querySelector('#nicknameSubmit');
+
+        input.focus();
+
+        const submit = () => {
+            const val = input.value.trim();
+            if (!val) {
+                errorEl.textContent = '昵称不能为空，请输入昵称';
+                input.style.borderColor = '#ef4444';
+                input.focus();
+                return;
+            }
+            overlay.remove();
+            resolve(val);
+        };
+
+        submitBtn.addEventListener('click', submit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submit();
+        });
+        input.addEventListener('input', () => {
+            errorEl.textContent = '';
+            input.style.borderColor = '#e5e7eb';
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlUid = urlParams.get('uid');
+
+    let uid = localStorage.getItem('uid') || '';
+    let nickname = localStorage.getItem('nickname') || '';
+    let isNewUser = false;
+
+    // ---- Step 1: Determine uid ----
+    if (urlUid) {
+        // Old user migration: uid from URL param
+        uid = urlUid;
+        localStorage.setItem('uid', uid);
+        // Clean URL: remove ?uid=xxx from address bar
+        window.history.replaceState({}, document.title, window.location.pathname);
+        console.log(`🔗 UID loaded from URL: ${uid}`);
+    }
+
+    if (!uid) {
+        // New user: must set nickname first, then register via Worker
+        isNewUser = true;
+        nickname = await showNicknameModal();
+
+        try {
+            const result = await CloudSync.register(WORKER_URL, nickname);
+            if (result.success) {
+                uid = result.uid;
+                localStorage.setItem('uid', uid);
+                localStorage.setItem('nickname', nickname);
+                console.log(`🆕 New user registered: ${uid} (${nickname})`);
+            } else {
+                alert('注册失败，请刷新重试');
+                return;
+            }
+        } catch (e) {
+            console.error('Registration error:', e);
+            alert('网络错误，请检查网络后刷新重试');
+            return;
         }
     }
 
-    // Dynamically generate manifest with token in start_url (for iOS standalone mode)
+    // ---- Step 2: Generate manifest (no token needed now) ----
     const manifestObj = {
         name: "自律",
         short_name: "自律",
         description: "自律打卡应用",
-        start_url: token
-            ? `./index.html?token=${encodeURIComponent(token)}&user=${encodeURIComponent(userKey)}`
-            : "./index.html",
+        start_url: "./index.html",
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#4f46e5",
@@ -1512,20 +1565,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     manifestLink.href = manifestUrl;
     document.head.appendChild(manifestLink);
 
-    const dataManager = new DataManager(userKey);
-
-    // Initialize cloud sync with token from URL
-    const cloudSync = new CloudSync(token);
-    cloudSync.setUserKey(userKey);
+    // ---- Step 3: Initialize data & sync ----
+    const dataManager = new DataManager(uid);
+    const cloudSync = new CloudSync(WORKER_URL, uid);
     window.cloudSync = cloudSync;
 
     // Pull cloud data first, then initialize UI
     if (cloudSync.isEnabled()) {
         await cloudSync.pull(dataManager);
+        // After pull, update nickname from cloud data (for old users)
+        nickname = localStorage.getItem('nickname') || nickname;
     } else {
         cloudSync.updateStatus('disabled');
     }
 
+    // ---- Step 4: Initialize UI modules ----
     const sleepModule = new SleepModule(dataManager);
     const habitModule = new HabitModule(dataManager);
     const recordModule = new RecordModule(dataManager);
@@ -1534,7 +1588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Click sync indicator to manually trigger sync
     document.getElementById('syncIndicator')?.addEventListener('click', async () => {
         if (!cloudSync.isEnabled()) {
-            alert('云同步未启用\n\n请在代码中填入 GIST_ID 和 GH_TOKEN');
+            alert('云同步未启用\n\n请确保已正确设置 UID');
             return;
         }
         const pulled = await cloudSync.pull(dataManager);
@@ -1549,10 +1603,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('同步完成 ✅');
     });
 
-    console.log(`自律 App 已启动！用户: ${userKey}`);
+    console.log(`自律 App 已启动！用户: ${uid} (${nickname})`);
     if (cloudSync.isEnabled()) {
-        console.log('☁️ GitHub Gist 云同步已启用');
+        console.log('☁️ 云同步已启用 (via Cloudflare Worker)');
     } else {
-        console.log('💾 本地模式（填入 GIST_ID 和 GH_TOKEN 可启用云同步）');
+        console.log('📴 云同步未启用');
     }
 });

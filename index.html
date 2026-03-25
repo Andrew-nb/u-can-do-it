@@ -11,10 +11,9 @@
 <link rel="apple-touch-icon" sizes="152x152" href="icon-v2.png">
 <link rel="apple-touch-icon" sizes="120x120" href="icon-v2.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-v2.png">
-    <link rel="manifest" id="manifest-link" href="manifest.json">
     <script>
-    // Dynamically override manifest with uid in start_url (Android only)
-    // If no uid is found, the static manifest.json above is used as fallback
+    // Dynamically generate manifest with uid in start_url
+    // so that "Add to Home Screen → Web App" preserves the user identity
     (function() {
         var uid = new URLSearchParams(window.location.search).get('uid')
                 || localStorage.getItem('uid')
@@ -22,13 +21,7 @@
                     var m = document.cookie.match(/(?:^|; )uid=([^;]*)/);
                     return m ? decodeURIComponent(m[1]) : '';
                 })();
-        if (!uid) return; // No uid — keep static manifest.json
-        
-        var baseUrl = window.location.href.split('?')[0];
-        baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
-        var startUrl = baseUrl + 'index.html?uid=' + encodeURIComponent(uid);
-        var iconUrl = baseUrl + 'icon-v2.png';
-        
+        var startUrl = uid ? './index.html?uid=' + encodeURIComponent(uid) : './index.html';
         var manifest = {
             name: '\u81ea\u5f8b',
             short_name: '\u81ea\u5f8b',
@@ -38,18 +31,18 @@
             background_color: '#ffffff',
             theme_color: '#4f46e5',
             icons: [
-                { src: iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any' },
-                { src: iconUrl, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-                { src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any' },
-                { src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                { src: iconUrl, sizes: '180x180', type: 'image/png', purpose: 'any' }
+                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+                { src: 'icon-v2.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
             ]
         };
         var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-        var link = document.getElementById('manifest-link');
-        if (link) {
-            link.href = URL.createObjectURL(blob);
-        }
+        var link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = URL.createObjectURL(blob);
+        document.head.appendChild(link);
     })();
     </script>
 <title>自律</title>

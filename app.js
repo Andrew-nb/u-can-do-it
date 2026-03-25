@@ -1738,26 +1738,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ensures fullscreen display on iOS without needing a SW.
     // Android/other: register SW so Chrome recognizes PWA install criteria.
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    
-    // Force unregister all existing service workers to clear old domain cache
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-            for (let registration of registrations) {
-                registration.unregister();
-                console.log('Unregistered old service worker:', registration);
-            }
-        });
-    }
-
     if ('serviceWorker' in navigator && !isIOS) {
-        // Delay registration slightly to ensure unregistration completes
-        setTimeout(() => {
-            navigator.serviceWorker.register('./sw.js').then(reg => {
-                console.log('New service worker registered:', reg);
-            }).catch(err => {
-                console.error('Service worker registration failed:', err);
-            });
-        }, 1000);
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
     } else if (isIOS && 'serviceWorker' in navigator) {
         // Unregister any previously registered SW on iOS to ensure clean state
         navigator.serviceWorker.getRegistrations().then(registrations => {

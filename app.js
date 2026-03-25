@@ -603,13 +603,6 @@ class SleepModule {
         const chartDom = document.getElementById('sleepChart');
         this.chart = echarts.init(chartDom);
         this.updateChart();
-
-        // Resize chart when window size changes (rotation, responsive layout)
-        window.addEventListener('resize', () => {
-            if (this.chart) {
-                this.chart.resize();
-            }
-        });
     }
 
     updateChart() {

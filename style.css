@@ -155,17 +155,65 @@
     opacity: 1;
 }
 
+/* Sleep chart responsive height */
+.sleep-chart {
+    width: 100%;
+    height: 400px;
+}
+
+@media (max-width: 480px) {
+    .sleep-chart {
+        height: 300px;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .sleep-chart {
+        height: 350px;
+    }
+}
+
+/* Chart header: title + range buttons, responsive layout */
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.time-range-group {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* On narrow screens: stack title above buttons, both centered */
+@media (max-width: 480px) {
+    .chart-header {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .time-range-group {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 /* Time range button styles */
 .time-range-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 500;
     color: #6b7280;
     background-color: #f3f4f6;
     transition: all 0.2s;
     border: none;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .time-range-btn:hover {

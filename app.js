@@ -1300,7 +1300,11 @@ class RecordModule {
                 const weekEndStr = this.dataManager.formatDateSimple(weekEnd);
                 
                 if (habitCreatedAt <= weekEndStr) {
-                    return true;
+                    // Only count as "has habits" if the week is fully settled
+                    const todayStr = this.dataManager.formatDate(new Date());
+                    if (todayStr > weekEndStr) {
+                        return true;
+                    }
                 }
             }
         }
@@ -1350,6 +1354,11 @@ class RecordModule {
                 
                 // Habit must exist within this week (created on or before week end)
                 if (!habitCreatedAt || habitCreatedAt > weekEndStr) {
+                    return;
+                }
+
+                // Skip unsettled weeks (week not fully past yet)
+                if (todayStr <= weekEndStr) {
                     return;
                 }
                 

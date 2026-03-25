@@ -1593,6 +1593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let uid = localStorage.getItem('uid') || '';
     let nickname = localStorage.getItem('nickname') || '';
     let isNewUser = false;
+    let cloudDataFromVerify = null; // Cache cloud data from verify to reuse in Step 4
 
     // Helper: clear all local data associated with a uid
     function clearLocalUserData(oldUid) {
@@ -1670,6 +1671,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     nickname = verifyResult.data.nickname;
                     localStorage.setItem('nickname', nickname);
                 }
+                // Cache the full cloud data to reuse in Step 4 (avoid duplicate /pull request)
+                cloudDataFromVerify = verifyResult.data;
                 console.log(`✅ UID verified: ${uid} (${nickname})`);
             } else {
                 // uid explicitly not found in database — clear everything and enter new user flow
@@ -1718,7 +1721,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Pull cloud data and merge with local
     if (cloudSync.isEnabled()) {
         if (!isNewUser) {
-            await cloudSync.pull(dataManager);
+            if (cloudDataFromVerify) {
+                // Reuse data already fetched during verify — no duplicate /pull request
+                try {
+                    const cloud = cloudDataFromVerify;
+                    console.log(`[CloudSync] Using cached verify data, keys: ${Object.keys(cloud)}`);
+
+                    if (cloud.nickname) {
+                        localStorage.setItem('nickname', cloud.nickname);
+                    }
+
+                    // Merge sleep records (cloud base, local wins on conflict)
+                    if (cloud.sleepRecords && cloud.sleepRecords.length > 0) {
+                        const local = dataManager.getSleepRecords();
+                        const map = new Map();
+                        cloud.sleepRecords.forEach(r => map.set(r.date, r));
+                        local.forEach(r => map.set(r.date, r));
+                        const merged = Array.from(map.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
+                        localStorage.setItem(dataManager.SLEEP_KEY, JSON.stringify(merged));
+                        console.log(`[CloudSync] Merged ${cloud.sleepRecords.length} cloud + ${local.length} local sleep records → ${merged.length} total`);
+                    }
+
+                    // Merge habit records (union checkIns)
+                    if (cloud.habitRecords && cloud.habitRecords.length > 0) {
+                        const local = dataManager.getHabits();
+                        const map = new Map();
+                        cloud.habitRecords.forEach(h => map.set(h.id, { ...h }));
+                        local.forEach(h => {
+                            if (map.has(h.id)) {
+                                const existing = map.get(h.id);
+                                const allCheckIns = new Set([...existing.checkIns, ...h.checkIns]);
+                                existing.checkIns = Array.from(allCheckIns).sort();
+                                existing.name = h.name;
+                                existing.type = h.type;
+                                existing.weeklyGoal = h.weeklyGoal;
+                            } else {
+                                map.set(h.id, { ...h });
+                            }
+                        });
+                        localStorage.setItem(dataManager.HABIT_KEY, JSON.stringify(Array.from(map.values())));
+                        console.log(`[CloudSync] Merged ${cloud.habitRecords.length} cloud + ${local.length} local habits`);
+                    }
+
+                    // Merge deleted miss compensation
+                    if (cloud.deletedMissCompensation) {
+                        const localComp = dataManager.getDeletedMissCompensation();
+                        const merged = { ...cloud.deletedMissCompensation };
+                        for (const [dateStr, val] of Object.entries(localComp)) {
+                            merged[dateStr] = Math.max(merged[dateStr] || 0, val);
+                        }
+                        dataManager.saveDeletedMissCompensation(merged);
+                    }
+
+                    cloudSync.updateStatus('success');
+                } catch (e) {
+                    console.error('[CloudSync] Merge cached data error:', e);
+                    cloudSync.updateStatus('error');
+                }
+            } else {
+                // No cached data (e.g. network fallback case) — pull fresh
+                await cloudSync.pull(dataManager);
+            }
         }
         nickname = localStorage.getItem('nickname') || nickname;
     } else {

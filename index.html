@@ -23,7 +23,12 @@
                     return m ? decodeURIComponent(m[1]) : '';
                 })();
         if (!uid) return; // No uid — keep static manifest.json
-        var startUrl = './index.html?uid=' + encodeURIComponent(uid);
+        
+        var baseUrl = window.location.href.split('?')[0];
+        baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
+        var startUrl = baseUrl + 'index.html?uid=' + encodeURIComponent(uid);
+        var iconUrl = baseUrl + 'icon-v2.png';
+        
         var manifest = {
             name: '\u81ea\u5f8b',
             short_name: '\u81ea\u5f8b',
@@ -33,11 +38,11 @@
             background_color: '#ffffff',
             theme_color: '#4f46e5',
             icons: [
-                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-                { src: 'icon-v2.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-                { src: 'icon-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                { src: 'icon-v2.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
+                { src: iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any' },
+                { src: iconUrl, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+                { src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any' },
+                { src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+                { src: iconUrl, sizes: '180x180', type: 'image/png', purpose: 'any' }
             ]
         };
         var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });

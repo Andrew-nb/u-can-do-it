@@ -1593,7 +1593,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let uid = localStorage.getItem('uid') || '';
     let nickname = localStorage.getItem('nickname') || '';
     let isNewUser = false;
-    let pulledCloudData = false; // Track if we already pulled during verification
 
     // Helper: clear all local data associated with a uid
     function clearLocalUserData(oldUid) {
@@ -1672,10 +1671,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.setItem('nickname', nickname);
                 }
                 console.log(`✅ UID verified: ${uid} (${nickname})`);
-                // We already have cloud data, no need to pull again later
-                if (verifyResult.data) {
-                    pulledCloudData = verifyResult.data;
-                }
             } else {
                 // uid explicitly not found in database — clear everything and enter new user flow
                 console.warn(`⚠️ UID ${uid} not found in database (server returned success:false), resetting...`);
@@ -1720,54 +1715,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cloudSync = new CloudSync(WORKER_URL, uid);
     window.cloudSync = cloudSync;
 
-    // Use already-pulled cloud data if available, otherwise pull fresh
+    // Pull cloud data and merge with local
     if (cloudSync.isEnabled()) {
-        if (pulledCloudData && !isNewUser) {
-            // We already pulled during verification, merge directly
-            cloudSync.updateStatus('syncing');
-            try {
-                const cloud = pulledCloudData;
-                if (cloud.sleepRecords && cloud.sleepRecords.length > 0) {
-                    const local = dataManager.getSleepRecords();
-                    const map = new Map();
-                    cloud.sleepRecords.forEach(r => map.set(r.date, r));
-                    local.forEach(r => map.set(r.date, r));
-                    const merged = Array.from(map.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
-                    localStorage.setItem(dataManager.SLEEP_KEY, JSON.stringify(merged));
-                }
-                if (cloud.habitRecords && cloud.habitRecords.length > 0) {
-                    const local = dataManager.getHabits();
-                    const map = new Map();
-                    cloud.habitRecords.forEach(h => map.set(h.id, { ...h }));
-                    local.forEach(h => {
-                        if (map.has(h.id)) {
-                            const existing = map.get(h.id);
-                            const allCheckIns = new Set([...existing.checkIns, ...h.checkIns]);
-                            existing.checkIns = Array.from(allCheckIns).sort();
-                            existing.name = h.name;
-                            existing.type = h.type;
-                            existing.weeklyGoal = h.weeklyGoal;
-                        } else {
-                            map.set(h.id, { ...h });
-                        }
-                    });
-                    localStorage.setItem(dataManager.HABIT_KEY, JSON.stringify(Array.from(map.values())));
-                }
-                if (cloud.deletedMissCompensation) {
-                    const localComp = dataManager.getDeletedMissCompensation();
-                    const merged = { ...cloud.deletedMissCompensation };
-                    for (const [dateStr, val] of Object.entries(localComp)) {
-                        merged[dateStr] = Math.max(merged[dateStr] || 0, val);
-                    }
-                    dataManager.saveDeletedMissCompensation(merged);
-                }
-                cloudSync.updateStatus('success');
-                console.log(`[CloudSync] Merged pre-pulled cloud data for uid: ${uid}`);
-            } catch (e) {
-                console.error('[CloudSync] Merge pre-pulled data error:', e);
-                cloudSync.updateStatus('error');
-            }
-        } else {
+        if (!isNewUser) {
             await cloudSync.pull(dataManager);
         }
         nickname = localStorage.getItem('nickname') || nickname;

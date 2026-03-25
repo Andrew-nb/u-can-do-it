@@ -1654,8 +1654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (urlUid) {
         // URL has uid param — use it as candidate (don't save yet, verify first)
         uid = urlUid;
-        // Clean URL: remove ?uid=xxx from address bar
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Keep uid in URL so "Add to Home Screen" preserves it
         console.log(`🔗 UID candidate from URL: ${uid}`);
     }
 
@@ -1707,6 +1706,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('注册失败，请检查网络后刷新重试');
             return;
         }
+    }
+
+    // Ensure uid is always in URL (so "Add to Home Screen" / PWA preserves it)
+    if (uid && !urlUid) {
+        const newUrl = `${window.location.pathname}?uid=${encodeURIComponent(uid)}`;
+        window.history.replaceState({}, document.title, newUrl);
+        console.log(`🔗 Added uid to URL for PWA persistence: ${uid}`);
     }
 
     // ---- Step 3: Register Service Worker for PWA support ----

@@ -1544,6 +1544,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // ---- Step 1.5: Verify uid still exists in database ----
+    if (uid && !isNewUser) {
+        try {
+            const verifyRes = await fetch(`${WORKER_URL}/pull?uid=${uid}`);
+            if (verifyRes.ok) {
+                const verifyResult = await verifyRes.json();
+                // If uid not found in database (no data returned), reset and re-register
+                if (!verifyResult.success || !verifyResult.data) {
+                    console.warn(`⚠️ UID ${uid} not found in database, resetting...`);
+                    localStorage.removeItem('uid');
+                    localStorage.removeItem('nickname');
+                    uid = '';
+                    nickname = '';
+
+                    // Re-enter new user flow
+                    isNewUser = true;
+                    nickname = await showNicknameModal();
+                    try {
+                        const result = await CloudSync.register(WORKER_URL, nickname);
+                        if (result.success) {
+                            uid = result.uid;
+                            localStorage.setItem('uid', uid);
+                            localStorage.setItem('nickname', nickname);
+                            console.log(`🆕 Re-registered as new user: ${uid} (${nickname})`);
+                        } else {
+                            alert('注册失败，请刷新重试');
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Re-registration error:', e);
+                        alert('网络错误，请检查网络后刷新重试');
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            // Network error during verification — skip check, proceed with existing uid
+            console.warn('UID verification failed (network), proceeding with local uid:', e);
+        }
+    }
+
     // ---- Step 2: Generate manifest (no token needed now) ----
     const manifestObj = {
         name: "自律",

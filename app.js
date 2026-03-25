@@ -1620,15 +1620,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Helper: verify uid exists in database via /pull, returns cloud data or null
-    async function verifyUidInDatabase(uidToVerify) {
-        const res = await fetch(`${WORKER_URL}/pull?uid=${uidToVerify}`);
-        if (!res.ok) throw new Error(`Pull failed: ${res.status}`);
-        const result = await res.json();
-        if (result.success && result.data) {
-            return result.data; // uid exists, return cloud data
+    // Helper: verify uid exists in database via /pull, with retry for network resilience
+    async function verifyUidInDatabase(uidToVerify, maxRetries = 2) {
+        let lastError = null;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                if (attempt > 0) {
+                    // Wait before retry: 1s, 2s
+                    await new Promise(r => setTimeout(r, attempt * 1000));
+                    console.log(`🔄 Retry verify uid (attempt ${attempt + 1})...`);
+                }
+                const res = await fetch(`${WORKER_URL}/pull?uid=${uidToVerify}`);
+                if (!res.ok) throw new Error(`Pull failed: ${res.status}`);
+                const result = await res.json();
+                if (result.success && result.data) {
+                    return result.data; // uid exists, return cloud data
+                }
+                return null; // uid not found (server responded clearly)
+            } catch (e) {
+                lastError = e;
+                console.warn(`Verify attempt ${attempt + 1} failed:`, e.message);
+            }
         }
-        return null; // uid not found
+        // All retries exhausted — throw so caller knows it's a network issue, not "uid not found"
+        throw lastError;
     }
 
     // ---- Step 1: Determine uid ----
@@ -1663,14 +1678,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nickname = '';
             }
         } catch (e) {
-            // Network error — if uid was from localStorage (trusted), keep it; if from URL (untrusted), discard
-            if (urlUid && !localStorage.getItem('uid')) {
-                console.warn('Cannot verify URL uid (network error), ignoring:', e);
-                uid = '';
-                nickname = '';
-            } else {
-                console.warn('UID verification failed (network), proceeding with local uid:', e);
+            // Network error after retries — trust the uid (whether from URL or localStorage)
+            // rather than forcing a new registration which would lose user data
+            console.warn('UID verification failed (network), trusting uid and proceeding:', e);
+            if (urlUid) {
+                // Save URL uid to localStorage so it persists for next visit
+                localStorage.setItem('uid', uid);
+                console.log(`💾 Saved URL uid to localStorage despite network error: ${uid}`);
             }
+            // Don't clear uid — let the user continue, cloud sync will retry later
         }
     }
 

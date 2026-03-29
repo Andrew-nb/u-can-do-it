@@ -91,7 +91,7 @@
     }
 }
 
-/* Floating bottom navigation bar */
+/* Floating bottom navigation bar — iOS Liquid Glass */
 .floating-nav {
     position: fixed;
     bottom: 40px;
@@ -103,13 +103,32 @@
     display: flex;
     align-items: center;
     gap: 18px;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1.5px solid rgba(79, 70, 229, 0.15);
+    /*
+     * iOS Liquid Glass recipe (tuned for light backgrounds):
+     * 1. Low white fill — lets background tint bleed through
+     * 2. Strong blur (40px) — diffuses the tint into soft color
+     * 3. Mild saturate (130%) — avoids color-shift on pastel backgrounds
+     * 4. Thin bright border on top edge = refraction highlight
+     */
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.30) 0%,
+        rgba(255, 255, 255, 0.15) 100%
+    );
+    backdrop-filter: saturate(130%) blur(40px);
+    -webkit-backdrop-filter: saturate(130%) blur(40px);
+    /* Refraction border: bright top, fading sides, near-invisible bottom */
+    border: 0.5px solid rgba(255, 255, 255, 0.35);
+    border-top-color: rgba(255, 255, 255, 0.7);
+    border-bottom-color: rgba(255, 255, 255, 0.12);
     border-radius: 9999px;
     padding: 8px 20px;
-    box-shadow: 0 8px 32px rgba(79, 70, 229, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+    /* Layered shadows: soft ambient + inner specular highlight on top edge */
+    box-shadow:
+        0 4px 30px rgba(0, 0, 0, 0.06),
+        0 1px 3px rgba(0, 0, 0, 0.04),
+        inset 0 1.5px 0 rgba(255, 255, 255, 0.45),
+        inset 0 -0.5px 0 rgba(0, 0, 0, 0.03);
 }
 
 /* Navigation button styles */

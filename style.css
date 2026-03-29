@@ -91,7 +91,7 @@
     }
 }
 
-/* Floating bottom navigation bar — iOS Liquid Glass */
+/* Floating bottom navigation bar — Liquid Glass (cross-platform) */
 .floating-nav {
     position: fixed;
     bottom: 40px;
@@ -104,31 +104,34 @@
     align-items: center;
     gap: 18px;
     /*
-     * iOS Liquid Glass recipe (tuned for light backgrounds):
-     * 1. Low white fill — lets background tint bleed through
-     * 2. Strong blur (40px) — diffuses the tint into soft color
-     * 3. Mild saturate (130%) — avoids color-shift on pastel backgrounds
-     * 4. Thin bright border on top edge = refraction highlight
+     * Liquid Glass — works on ALL browsers & backgrounds:
+     * Layer 1: subtle tinted gradient (gives the "glass has color" feel)
+     * Layer 2: backdrop-filter blur (progressive enhancement)
+     * Layer 3: bright top border + inner glow = refraction highlight
+     * Layer 4: outer shadow for depth / floating feel
      */
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.30) 0%,
-        rgba(255, 255, 255, 0.15) 100%
-    );
-    backdrop-filter: saturate(130%) blur(40px);
-    -webkit-backdrop-filter: saturate(130%) blur(40px);
-    /* Refraction border: bright top, fading sides, near-invisible bottom */
-    border: 0.5px solid rgba(255, 255, 255, 0.35);
-    border-top-color: rgba(255, 255, 255, 0.7);
-    border-bottom-color: rgba(255, 255, 255, 0.12);
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.72) 0%,
+            rgba(230, 235, 245, 0.55) 50%,
+            rgba(220, 225, 240, 0.45) 100%
+        );
+    /* Progressive enhancement: blur if browser supports it */
+    -webkit-backdrop-filter: saturate(140%) blur(30px);
+    backdrop-filter: saturate(140%) blur(30px);
+    /* Refraction border: bright top, subtle sides, near-invisible bottom */
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-top-color: rgba(255, 255, 255, 0.9);
+    border-bottom-color: rgba(255, 255, 255, 0.25);
     border-radius: 9999px;
     padding: 8px 20px;
-    /* Layered shadows: soft ambient + inner specular highlight on top edge */
+    /* Layered shadows: outer depth + inner specular highlights */
     box-shadow:
-        0 4px 30px rgba(0, 0, 0, 0.06),
-        0 1px 3px rgba(0, 0, 0, 0.04),
-        inset 0 1.5px 0 rgba(255, 255, 255, 0.45),
-        inset 0 -0.5px 0 rgba(0, 0, 0, 0.03);
+        0 8px 32px rgba(100, 100, 140, 0.12),
+        0 2px 8px rgba(100, 100, 140, 0.08),
+        inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
+        inset 0 -1px 2px rgba(100, 100, 140, 0.06);
 }
 
 /* Navigation button styles */

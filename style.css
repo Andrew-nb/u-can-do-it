@@ -496,3 +496,24 @@
         font-size: 0.5rem;
     }
 }
+
+/* ==================== Fullscreen safe-area padding ====================
+   Applies to iOS PWA (black-translucent) and Android PWA (display: fullscreen).
+   Pushes content below notch / status bar and above the home indicator so the
+   app looks immersive without content being covered. */
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* Keep the floating bottom nav clear of the gesture bar */
+.floating-nav {
+    bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+}
+
+@media (max-width: 480px) {
+    .floating-nav {
+        bottom: calc(34px + env(safe-area-inset-bottom)) !important;
+    }
+}

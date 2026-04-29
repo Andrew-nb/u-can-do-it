@@ -3,7 +3,8 @@
     "short_name": "自律",
     "description": "自律打卡应用",
     "start_url": "./index.html",
-    "display": "standalone",
+    "display": "fullscreen",
+    "display_override": ["fullscreen", "standalone"],
     "background_color": "#ffffff",
     "theme_color": "#eff6ff",
     "icons": [

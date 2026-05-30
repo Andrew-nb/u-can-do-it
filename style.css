@@ -131,18 +131,22 @@ body::before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
+    gap: 16px;
+    flex-wrap: nowrap;
 }
 
 .sleep-time {
     font-family: 'Orbitron', 'JetBrains Mono', ui-monospace, monospace;
-    font-size: clamp(2.6rem, 7vw, 4.2rem);
+    font-size: clamp(1.6rem, 8.5vw, 4.2rem);
     font-weight: 500;
     color: var(--ink);
     letter-spacing: -0.02em;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 /* ==================== Sleep Check-in Button (replaces 300px circle) ==================== */
@@ -167,6 +171,8 @@ body::before {
     letter-spacing: 0.02em;
     transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 8px 16px -8px rgba(74, 68, 57, 0.18);
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .sleep-circle-btn .sleep-btn-icon {
@@ -298,6 +304,32 @@ body::before {
 @media (max-width: 768px) {
     #sleepChart { height: 300px !important; }
     .sleep-card { padding: 24px 20px 22px; }
+}
+
+/* Narrow phones: shrink the button so clock+button stay on one row */
+@media (max-width: 540px) {
+    .sleep-clock-row { gap: 12px; }
+    .sleep-circle-btn {
+        min-width: 0;
+        min-height: 52px;
+        padding: 12px 16px;
+        font-size: 13px;
+        gap: 8px;
+    }
+    .sleep-circle-btn .sleep-btn-icon-wrap,
+    .sleep-circle-btn .sleep-btn-icon {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+@media (max-width: 360px) {
+    .sleep-clock-row { gap: 10px; }
+    .sleep-circle-btn {
+        padding: 10px 12px;
+        font-size: 12px;
+        gap: 6px;
+    }
 }
 
 /* ==================== Page Header (Habit / Record) ==================== */
@@ -666,8 +698,14 @@ body::before {
 
 .legend-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
+}
+
+@media (min-width: 720px) {
+    .legend-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
 
 .legend-item {

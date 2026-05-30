@@ -226,6 +226,11 @@ body::before {
     background: #2d4a35;
     color: #e8efe9;
     border-color: #2d4a35;
+    box-shadow: 0 8px 16px -8px rgba(45, 74, 53, 0.5);
+}
+
+.sleep-circle-btn.checked-in:hover {
+    box-shadow: 0 14px 24px -10px rgba(45, 74, 53, 0.6);
 }
 
 @keyframes pulse {

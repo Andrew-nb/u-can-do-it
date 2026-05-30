@@ -918,6 +918,25 @@ body::before {
     to   { transform: rotate(360deg); }
 }
 
+/* ==================== Check-in Effects ==================== */
+/* Star burst — sleep check-in success */
+.fx-star {
+    position: fixed;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10000;
+    transform: translate(-50%, -50%) scale(0);
+    animation: fxStar 1.2s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+
+@keyframes fxStar {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    20%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.8); opacity: 0; }
+}
+
 /* ==================== Floating Bottom Nav (Liquid Glass — Warm) ==================== */
 .floating-nav {
     position: fixed;

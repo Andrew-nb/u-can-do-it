@@ -1,3 +1,46 @@
+// ==================== Check-in Animation Effects ====================
+// Star burst — used when sleep check-in succeeds
+function fireStarBurst(btn) {
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const colors = ['#c2410c', '#a8854a', '#5d7a64', '#c2410c', '#a8854a', '#5d7a64', '#c2410c', '#a8854a'];
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + Math.random() * 0.4;
+        const dist = 55 + Math.random() * 35;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist;
+        const s = document.createElement('span');
+        s.className = 'fx-star';
+        s.style.left = cx + 'px';
+        s.style.top = cy + 'px';
+        s.style.background = colors[i];
+        s.style.boxShadow = `0 0 8px ${colors[i]}aa`;
+        s.style.setProperty('--dx', dx + 'px');
+        s.style.setProperty('--dy', dy + 'px');
+        s.style.animationDelay = (Math.random() * 0.1) + 's';
+        document.body.appendChild(s);
+        setTimeout(() => s.remove(), 1400);
+    }
+}
+
+// Confetti — used when habit check-in succeeds (canvas-confetti CDN)
+function fireConfetti(btn) {
+    if (!btn || typeof confetti !== 'function') return;
+    const rect = btn.getBoundingClientRect();
+    const x = (rect.left + rect.width / 2) / window.innerWidth;
+    const y = (rect.top + rect.height / 2) / window.innerHeight;
+    confetti({
+        particleCount: 60,
+        spread: 70,
+        origin: { x, y },
+        colors: ['#c2410c', '#a8854a', '#5d7a64', '#fff8ee', '#1a1814'],
+        scalar: 0.9,
+        ticks: 200
+    });
+}
+
 // ==================== Cloud Sync via Cloudflare Worker ====================
 class CloudSync {
     constructor(workerUrl, uid) {
@@ -642,7 +685,10 @@ class SleepModule {
             this.dataManager.saveSleepRecord(date, time);
             this.loadTodayRecord();
             this.updateChart();
-            
+
+            // 🌟 fire star-burst on the sleep check-in button
+            fireStarBurst(document.getElementById('sleepCheckInBtn'));
+
             this.showToast('已记录今晚入睡');
             if (window.cloudSync) window.cloudSync.debouncedPush(this.dataManager);
         }
@@ -1106,6 +1152,8 @@ class HabitModule {
             
             if (checkInBtn) {
                 checkInBtn.addEventListener('click', () => {
+                    // 🎉 fire confetti at the click site BEFORE re-render replaces the button
+                    fireConfetti(checkInBtn);
                     this.checkInHabit(habit.id);
                 });
             }

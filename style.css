@@ -1,271 +1,717 @@
-/* ==================== Embedded Styles ==================== */
+/* ==================== Editorial Cream Theme ==================== */
+/* Palette: paper #fafaf6, ink #1a1814, terracotta #c2410c,
+   miss levels: #5d7a64 / #a8854a / #c2410c / #8b1a1a */
 
-/* Global font */
+:root {
+    --paper: #fafaf6;
+    --paper-2: #f3efe6;
+    --ink: #1a1814;
+    --ink-2: #4a4439;
+    --ink-3: #8a8275;
+    --hairline: #e6e0d3;
+    --terra: #c2410c;
+    --terra-soft: rgba(194, 65, 12, 0.08);
+    --lvl-0: #5d7a64;
+    --lvl-1: #a8854a;
+    --lvl-2: #c2410c;
+    --lvl-3: #8b1a1a;
+}
+
 * {
-    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Schibsted Grotesk', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.app-title {
-    font-family: 'ZCOOL KuaiLe', cursive;
-    font-size: 1.5rem;
-    letter-spacing: 0.05em;
+body {
+    background: var(--paper);
+    color: var(--ink);
+    background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(194, 65, 12, 0.04), transparent 55%),
+        radial-gradient(ellipse at 80% 100%, rgba(168, 133, 74, 0.05), transparent 50%);
+    background-attachment: fixed;
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
-/* Circular sleep check-in button */
-.sleep-circle-btn {
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+/* Subtle paper grain overlay */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+}
+
+.page-content { position: relative; z-index: 1; }
+
+/* ==================== Layout ==================== */
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 56px 28px 32px;
+}
+
+@media (max-width: 640px) {
+    .container { padding: 40px 18px 24px; }
+}
+
+/* ==================== Eyebrows / Greeting ==================== */
+.eyebrow {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    color: var(--terra);
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 14px;
+}
+
+.greeting { margin-bottom: 28px; }
+
+.greeting h2,
+#sleepGreeting {
+    font-family: 'Schibsted Grotesk', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0;
+}
+
+#sleepGreeting b,
+.greeting h2 b {
+    color: var(--terra);
+    font-style: italic;
+    font-weight: 700;
+}
+
+.greet-sub {
+    margin-top: 10px;
+    color: var(--ink-3);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+    .greeting h2,
+    #sleepGreeting { font-size: 2rem; }
+}
+
+/* ==================== Sleep Card (unified) ==================== */
+.sleep-card {
+    background: #fffdf7;
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    padding: 32px 32px 28px;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.8) inset,
+        0 24px 48px -28px rgba(74, 68, 57, 0.18);
+    position: relative;
+    overflow: hidden;
+}
+
+.sleep-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(194, 65, 12, 0.3), transparent);
+}
+
+.sleep-card-top {
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 28px;
+}
+
+.sleep-clock-row {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.sleep-time {
+    font-family: 'Orbitron', 'JetBrains Mono', ui-monospace, monospace;
+    font-size: clamp(2.6rem, 7vw, 4.2rem);
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ==================== Sleep Check-in Button (replaces 300px circle) ==================== */
+.sleep-circle-btn {
+    width: auto;
+    height: auto;
+    min-width: 180px;
+    min-height: 64px;
+    padding: 16px 26px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--paper);
+    color: var(--ink-2);
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 12px;
+    font-family: 'Schibsted Grotesk', 'Noto Sans SC', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 8px 16px -8px rgba(74, 68, 57, 0.18);
 }
 
+.sleep-circle-btn .sleep-btn-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.sleep-btn-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+}
+
+/* Toggle moon vs check based on button state */
+.sleep-circle-btn .icon-check { display: none; }
+.sleep-circle-btn .icon-moon  { display: block; }
+.sleep-circle-btn.checked-in .icon-moon  { display: none; }
+.sleep-circle-btn.checked-in .icon-check { display: block; }
+
 .sleep-circle-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 14px 24px -10px rgba(74, 68, 57, 0.25);
 }
 
 .sleep-circle-btn:active {
-    transform: scale(0.98);
+    transform: translateY(0) scale(0.99);
 }
 
-/* Three button states */
+/* Three-state styling */
 .sleep-circle-btn.gray {
-    background: linear-gradient(135deg, #9ca3af, #6b7280);
-    color: #ffffff;
+    background: var(--paper-2);
+    color: var(--ink-3);
+    border-color: var(--hairline);
     cursor: not-allowed;
+    box-shadow: none;
 }
+.sleep-circle-btn.gray:hover { transform: none; }
 
 .sleep-circle-btn.active-time {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    color: #ffffff;
-    animation: pulse 2s infinite;
+    background: var(--terra);
+    color: #fff8ee;
+    border-color: var(--terra);
+    box-shadow: 0 10px 24px -10px rgba(194, 65, 12, 0.55);
+    animation: pulse 2.4s ease-in-out infinite;
 }
 
 .sleep-circle-btn.checked-in {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: #ffffff;
+    background: #2d4a35;
+    color: #e8efe9;
+    border-color: #2d4a35;
 }
 
 @keyframes pulse {
-    0%, 100% {
-        box-shadow: 0 10px 30px rgba(79, 70, 229, 0.4);
-    }
-    50% {
-        box-shadow: 0 10px 40px rgba(79, 70, 229, 0.6);
-    }
+    0%, 100% { box-shadow: 0 10px 24px -10px rgba(194, 65, 12, 0.45); }
+    50%      { box-shadow: 0 14px 32px -10px rgba(194, 65, 12, 0.7); }
 }
 
-/* Page switching animation */
-.page-content {
-    display: none;
-    animation: fadeIn 0.3s ease-in;
-}
+/* ==================== Sleep Chart ==================== */
+.sleep-chart-wrap { padding-top: 4px; }
 
-.page-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeOut {
-    from {
-        opacity: 1;
-    }
-    to {
-        opacity: 0;
-    }
-}
-
-/* Floating bottom navigation bar — Liquid Glass (cross-platform) */
-.floating-nav {
-    position: fixed;
-    bottom: 40px;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    width: fit-content;
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    /*
-     * Liquid Glass — works on ALL browsers & backgrounds:
-     * Layer 1: subtle tinted gradient (gives the "glass has color" feel)
-     * Layer 2: backdrop-filter blur (progressive enhancement)
-     * Layer 3: bright top border + inner glow = refraction highlight
-     * Layer 4: outer shadow for depth / floating feel
-     */
-    background:
-        linear-gradient(
-            180deg,
-            rgba(255, 255, 255, 0.72) 0%,
-            rgba(230, 235, 245, 0.55) 50%,
-            rgba(220, 225, 240, 0.45) 100%
-        );
-    /* Progressive enhancement: blur if browser supports it */
-    -webkit-backdrop-filter: saturate(140%) blur(30px);
-    backdrop-filter: saturate(140%) blur(30px);
-    /* Refraction border: bright top, subtle sides, near-invisible bottom */
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    border-top-color: rgba(255, 255, 255, 0.9);
-    border-bottom-color: rgba(255, 255, 255, 0.25);
-    border-radius: 9999px;
-    padding: 8px 20px;
-    /* Layered shadows: outer depth + inner specular highlights */
-    box-shadow:
-        0 8px 32px rgba(100, 100, 140, 0.12),
-        0 2px 8px rgba(100, 100, 140, 0.08),
-        inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
-        inset 0 -1px 2px rgba(100, 100, 140, 0.06);
-}
-
-/* Navigation button styles */
-.nav-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.25s ease;
-    position: relative;
-}
-
-.nav-btn:hover {
-    background: rgba(79, 70, 229, 0.08);
-}
-
-.nav-btn.active {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
-}
-
-/* Divider between nav buttons and sync button */
-.nav-divider {
-    width: 1px;
-    height: 24px;
-    background: rgba(79, 70, 229, 0.2);
-    margin: 0 -4px;
-}
-
-/* Sync button specific */
-.sync-btn {
-    font-size: 0.95rem;
-    opacity: 0.6;
-}
-
-.sync-btn:hover {
-    opacity: 1;
-}
-
-/* Chart header: title + buttons layout */
 .chart-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 18px;
     gap: 12px;
     flex-wrap: nowrap;
 }
 
-/* Title: default one line */
 .chart-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1f2937;
+    font-family: 'Schibsted Grotesk', 'Noto Serif SC', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
     white-space: nowrap;
     flex-shrink: 0;
     line-height: 1.4;
 }
-
-.chart-title span {
-    display: inline;
-}
+.chart-title span { display: inline; }
 
 .time-range-group {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    padding: 3px;
 }
 
-/* Small screens: title 2 lines + vertical buttons in one row */
-@media (max-width: 480px) {
-    .chart-title {
-        white-space: normal;
-        font-size: 1rem;
-        line-height: 1.3;
-        max-width: 4.5em;
-    }
-    .chart-title span {
-        display: block;
-    }
-    .time-range-group {
-        flex-direction: row;
-        gap: 4px;
-    }
-    .time-range-btn {
-        writing-mode: vertical-rl;
-        text-orientation: upright;
-        padding: 0.5rem 0.25rem;
-        font-size: 0.7rem;
-        letter-spacing: 0.15em;
-        line-height: 1;
-    }
-}
-
-/* Time range button styles */
 .time-range-btn {
-    padding: 0.4rem 0.7rem;
-    border-radius: 0.5rem;
-    font-size: 0.8rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
     font-weight: 500;
-    color: #6b7280;
-    background-color: #f3f4f6;
+    color: var(--ink-3);
+    background: transparent;
     transition: all 0.2s;
     border: none;
     cursor: pointer;
     white-space: nowrap;
 }
 
-.time-range-btn:hover {
-    background-color: #e5e7eb;
-}
+.time-range-btn:hover { color: var(--ink-2); }
 
 .time-range-btn.active {
-    color: white;
-    background-color: #4f46e5;
+    color: #fff8ee;
+    background: var(--terra);
+    box-shadow: 0 2px 6px -2px rgba(194, 65, 12, 0.5);
 }
 
-/* Modal styles */
+@media (max-width: 480px) {
+    .chart-title {
+        white-space: normal;
+        font-size: 0.95rem;
+        line-height: 1.3;
+        max-width: 4.5em;
+    }
+    .chart-title span { display: block; }
+    .time-range-btn { padding: 0.35rem 0.6rem; font-size: 0.68rem; }
+}
+
+@media (max-width: 768px) {
+    #sleepChart { height: 300px !important; }
+    .sleep-card { padding: 24px 20px 22px; }
+}
+
+/* ==================== Page Header (Habit / Record) ==================== */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 20px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+}
+
+.page-header-center {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.page-header-left { flex: 1; min-width: 0; }
+
+.page-title {
+    font-family: 'Schibsted Grotesk', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.page-title em {
+    font-style: italic;
+    color: var(--terra);
+    font-weight: 700;
+}
+
+.page-sub {
+    margin-top: 8px;
+    color: var(--ink-3);
+    font-size: 14px;
+}
+
+.hidden-meta { display: none; }
+
+@media (max-width: 640px) {
+    .page-title { font-size: 1.8rem; }
+}
+
+/* ==================== Add Habit Button ==================== */
+.add-habit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    background: var(--terra);
+    color: #fff8ee;
+    border: 1px solid var(--terra);
+    font-family: 'Schibsted Grotesk', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 20px -8px rgba(194, 65, 12, 0.5);
+}
+
+.add-habit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px -10px rgba(194, 65, 12, 0.6);
+}
+
+.add-habit-btn:active { transform: translateY(0); }
+
+/* ==================== Habit Grid & Cards ==================== */
+.habit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.habit-card {
+    background: #fffdf7 !important;
+    border: 1px solid var(--hairline) !important;
+    border-radius: 16px !important;
+    padding: 22px !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 16px 32px -24px rgba(74, 68, 57, 0.18) !important;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    will-change: transform;
+}
+
+.habit-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(194, 65, 12, 0.3) !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 24px 40px -22px rgba(74, 68, 57, 0.25) !important;
+}
+
+.habit-card h4 {
+    font-family: 'Schibsted Grotesk', 'Noto Sans SC', sans-serif;
+    color: var(--ink) !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em;
+}
+
+/* Tailwind text overrides inside habit cards */
+.habit-card .text-gray-500 { color: var(--ink-3) !important; }
+.habit-card .text-gray-700 { color: var(--ink-2) !important; }
+.habit-card .text-gray-800 { color: var(--ink) !important; }
+.habit-card .text-indigo-600 { color: var(--terra) !important; }
+.habit-card .text-green-600 { color: var(--lvl-0) !important; }
+.habit-card .text-green-700 { color: var(--lvl-0) !important; }
+.habit-card .bg-green-50 { background-color: rgba(93, 122, 100, 0.1) !important; }
+.habit-card .text-blue-700 { color: #3a5a78 !important; }
+.habit-card .bg-blue-50 { background-color: rgba(58, 90, 120, 0.1) !important; }
+
+/* Progress bar */
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: var(--paper-2);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--lvl-0), #4a6650);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+
+/* Check-in button (overrides Tailwind purple gradient in app.js) */
+.check-in-btn {
+    background: var(--terra) !important;
+    background-image: none !important;
+    color: #fff8ee !important;
+    transition: all 0.25s !important;
+    border: none;
+}
+
+.check-in-btn:hover {
+    background: #a3360a !important;
+    background-image: none !important;
+    transform: translateY(-1px);
+}
+
+.check-in-btn:active { transform: scale(0.98); }
+
+/* Extra check-in (gold) */
+.extra-checkin-btn {
+    background: var(--lvl-1) !important;
+    background-image: none !important;
+    color: #fff8ee !important;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+
+.extra-checkin-btn:hover {
+    background: #8c6d3c !important;
+    background-image: none !important;
+}
+
+.extra-checkin-btn:active { transform: scale(0.98); }
+
+/* Cancel check-in */
+.cancel-checkin-btn {
+    transition: all 0.25s;
+    border: 1px solid var(--hairline) !important;
+    background: var(--paper) !important;
+    color: var(--ink-2) !important;
+    cursor: pointer;
+}
+
+.cancel-checkin-btn:hover { background: var(--paper-2) !important; }
+.cancel-checkin-btn:active { transform: scale(0.98); }
+
+/* Delete button */
+.delete-btn {
+    color: var(--lvl-3) !important;
+    background-color: rgba(139, 26, 26, 0.08) !important;
+    padding: 0.4rem 0.85rem !important;
+    border-radius: 999px !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    transition: all 0.2s;
+    border: 1px solid transparent !important;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background-color: rgba(139, 26, 26, 0.14) !important;
+    border-color: rgba(139, 26, 26, 0.2) !important;
+}
+
+/* ==================== Empty State ==================== */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--ink-3);
+}
+
+.empty-state svg {
+    margin: 0 auto 16px;
+    color: var(--ink-3);
+    opacity: 0.5;
+}
+
+.empty-title {
+    font-family: 'Schibsted Grotesk', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ink-2);
+}
+
+.empty-sub {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--ink-3);
+}
+
+.hidden { display: none !important; }
+
+/* ==================== Record / Calendar ==================== */
+.record-card {
+    background: #fffdf7;
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.8) inset,
+        0 24px 48px -28px rgba(74, 68, 57, 0.18);
+}
+
+.month-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.month-arrow {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--paper);
+    color: var(--ink-2);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.month-arrow:hover {
+    background: var(--paper-2);
+    color: var(--terra);
+    border-color: rgba(194, 65, 12, 0.3);
+}
+
+.month-title {
+    font-family: 'Orbitron', 'JetBrains Mono', monospace;
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0.08em;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 28px;
+}
+
+.weekday-header {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    padding: 8px 0;
+}
+
+/* Calendar day cell */
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    padding: 0.15rem;
+    font-size: 0.8rem;
+    background: var(--paper-2);
+    color: var(--ink-2);
+    border: 1px solid transparent;
+}
+
+.calendar-day:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 14px -6px rgba(74, 68, 57, 0.25);
+}
+
+.calendar-day.empty {
+    background-color: transparent;
+    cursor: default;
+    visibility: hidden;
+}
+.calendar-day.empty:hover { transform: none; box-shadow: none; }
+
+.calendar-day.future {
+    background-color: var(--paper-2);
+    color: var(--ink-3);
+    opacity: 0.45;
+    cursor: default;
+}
+.calendar-day.future:hover { transform: none; box-shadow: none; }
+
+.calendar-day .day-number {
+    font-family: 'Orbitron', 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.1rem;
+    line-height: 1;
+}
+
+.calendar-day .miss-count {
+    font-family: 'Schibsted Grotesk', 'Noto Sans SC', sans-serif;
+    font-size: 0.55rem;
+    opacity: 0.92;
+    margin-top: 0.05rem;
+    line-height: 1;
+}
+
+/* Miss count color levels */
+.calendar-day.level-0 { background-color: var(--lvl-0); color: #fff8ee; }
+.calendar-day.level-1 { background-color: var(--lvl-1); color: #fff8ee; }
+.calendar-day.level-2 { background-color: var(--lvl-2); color: #fff8ee; }
+.calendar-day.level-3 { background-color: var(--lvl-3); color: #fff8ee; }
+
+.calendar-day.today {
+    border: 1.5px solid var(--terra);
+    box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.15);
+}
+
+/* Legend */
+.legend-section {
+    border-top: 1px solid var(--hairline);
+    padding-top: 22px;
+}
+
+.legend-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    margin-bottom: 14px;
+}
+
+.legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.legend-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.legend-label {
+    font-size: 0.82rem;
+    color: var(--ink-2);
+}
+
+.signature {
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.03em;
+    margin: 28px 0 8px;
+}
+
+.sig-name {
+    color: var(--terra);
+    font-weight: 600;
+}
+
+/* ==================== Modal ==================== */
 .modal {
     display: none;
     position: fixed;
     z-index: 100;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    animation: fadeIn 0.3s ease-in;
+    inset: 0;
+    background-color: rgba(26, 24, 20, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fadeIn 0.25s ease;
 }
 
 .modal.active {
@@ -275,245 +721,257 @@
 }
 
 .modal-content {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 1rem;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    background: #fffdf7;
+    border: 1px solid var(--hairline);
+    padding: 28px;
+    border-radius: 20px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.35);
     width: 90%;
-    max-width: 500px;
+    max-width: 460px;
     animation: slideUp 0.3s ease-out;
 }
 
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Habit card styles */
-.habit-card {
-    background: white;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    will-change: transform;
-}
-
-.habit-card:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-/* Progress bar styles */
-.progress-bar {
-    width: 100%;
-    height: 8px;
-    background-color: #e5e7eb;
-    border-radius: 9999px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(to right, #10b981, #059669);
-    border-radius: 9999px;
-    transition: width 0.5s ease;
-}
-
-/* Check-in button animation */
-.check-in-btn {
-    transition: all 0.3s;
-}
-
-.check-in-btn:active {
-    transform: scale(0.95);
-}
-
-/* Extra check-in button (golden gradient) */
-.extra-checkin-btn {
-    background: linear-gradient(to right, #f59e0b, #f97316);
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.extra-checkin-btn:hover {
-    background: linear-gradient(to right, #d97706, #ea580c);
-}
-
-.extra-checkin-btn:active {
-    transform: scale(0.95);
-}
-
-/* Cancel check-in button */
-.cancel-checkin-btn {
-    transition: all 0.3s;
-    border: none;
-    cursor: pointer;
-}
-
-.cancel-checkin-btn:active {
-    transform: scale(0.95);
-}
-
-/* Delete button styles */
-.delete-btn {
-    color: #ef4444;
-    background-color: #fee2e2;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    border: none;
-    cursor: pointer;
-}
-
-.delete-btn:hover {
-    background-color: #fecaca;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .modal-content {
-        width: 95%;
-        padding: 1.5rem;
-    }
-    
-    #sleepChart {
-        height: 300px !important;
-    }
-}
-
-/* Calendar styles */
-.calendar-day {
-    aspect-ratio: 1;
+.modal-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.modal-title {
+    font-family: 'Schibsted Grotesk', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+}
+
+.modal-title em {
+    font-style: italic;
+    color: var(--terra);
+    font-weight: 700;
+}
+
+.modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--paper);
+    color: var(--ink-2);
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.375rem;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--paper-2);
+    color: var(--terra);
+    border-color: rgba(194, 65, 12, 0.3);
+}
+
+.form-row { margin-bottom: 18px; }
+
+.form-label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Schibsted Grotesk', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--terra);
+    box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.12);
+}
+
+.form-hint {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-top: 6px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 26px;
+}
+
+.btn-primary,
+.btn-secondary {
+    flex: 1;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-family: 'Schibsted Grotesk', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    position: relative;
-    padding: 0.15rem;
-    min-height: auto;
-    font-size: 0.8rem;
+    border: 1px solid transparent;
 }
 
-.calendar-day:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+.btn-primary {
+    background: var(--terra);
+    color: #fff8ee;
+    border-color: var(--terra);
+    box-shadow: 0 8px 20px -8px rgba(194, 65, 12, 0.5);
 }
 
-.calendar-day.empty {
-    background-color: transparent;
-    cursor: default;
-    visibility: hidden;
+.btn-primary:hover {
+    background: #a3360a;
+    border-color: #a3360a;
+    transform: translateY(-1px);
 }
 
-.calendar-day.empty:hover {
-    transform: none;
-    box-shadow: none;
+.btn-secondary {
+    background: var(--paper);
+    color: var(--ink-2);
+    border-color: var(--hairline);
 }
 
-.calendar-day.future {
-    background-color: #f3f4f6;
-    color: #9ca3af;
-    cursor: default;
+.btn-secondary:hover {
+    background: var(--paper-2);
+    border-color: var(--ink-3);
 }
 
-.calendar-day.future:hover {
-    transform: none;
-    box-shadow: none;
+@media (max-width: 640px) {
+    .modal-content { padding: 22px; }
+    .modal-title { font-size: 1.35rem; }
 }
 
-.calendar-day .day-number {
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 0.1rem;
-    line-height: 1;
+/* ==================== Page transitions ==================== */
+.page-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in;
 }
 
-.calendar-day .miss-count {
-    font-size: 0.55rem;
-    opacity: 0.8;
-    margin-top: 0.05rem;
-    line-height: 1;
+.page-content.active { display: block; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Miss count color levels: 0=完美(green) / 1=yellow / 2-3=orange / 4+=red */
-.calendar-day.level-0 {
-    background-color: #10b981;
-    color: white;
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-.calendar-day.level-1 {
-    background-color: #fbbf24;
-    color: white;
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
 }
 
-.calendar-day.level-2 {
-    background-color: #fb923c;
-    color: white;
-}
-
-.calendar-day.level-3 {
-    background-color: #ef4444;
-    color: white;
-}
-
-.calendar-day.today {
-    border: 2px solid #4f46e5;
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
-}
-
-/* Mobile navigation adjustments */
-@media (max-width: 480px) {
-    .floating-nav {
-        bottom: 34px;
-        padding: 6px 16px;
-        gap: 14px;
-    }
-    .nav-btn {
-        width: 42px;
-        height: 42px;
-        font-size: 1.2rem;
-    }
-    .nav-divider {
-        height: 22px;
-        margin: 0 -3px;
-    }
-    .calendar-day .day-number {
-        font-size: 0.7rem;
-    }
-    .calendar-day .miss-count {
-        font-size: 0.5rem;
-    }
-}
-
-/* ==================== Fullscreen safe-area padding ====================
-   Applies to iOS PWA (black-translucent) and Android PWA (display: fullscreen).
-   Pushes content below notch / status bar and above the home indicator so the
-   app looks immersive without content being covered. */
-body {
-    padding-top: env(safe-area-inset-top);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-}
-
-/* Keep the floating bottom nav clear of the gesture bar */
+/* ==================== Floating Bottom Nav (Liquid Glass — Warm) ==================== */
 .floating-nav {
-    bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+    position: fixed;
+    bottom: calc(40px + env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: fit-content;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 251, 240, 0.78) 0%,
+            rgba(243, 239, 230, 0.6) 50%,
+            rgba(232, 225, 210, 0.5) 100%
+        );
+    -webkit-backdrop-filter: saturate(150%) blur(28px);
+    backdrop-filter: saturate(150%) blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-top-color: rgba(255, 255, 255, 0.95);
+    border-bottom-color: rgba(194, 65, 12, 0.1);
+    border-radius: 9999px;
+    padding: 7px 18px;
+    box-shadow:
+        0 8px 32px rgba(74, 68, 57, 0.14),
+        0 2px 8px rgba(74, 68, 57, 0.08),
+        inset 0 1.5px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(194, 65, 12, 0.04);
 }
+
+.nav-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--ink-2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+    position: relative;
+    font-size: 1.1rem;
+}
+
+.nav-btn:hover {
+    background: rgba(194, 65, 12, 0.08);
+    color: var(--terra);
+}
+
+.nav-btn.active {
+    background: var(--terra);
+    color: #fff8ee;
+    box-shadow: 0 4px 12px rgba(194, 65, 12, 0.4);
+}
+
+.nav-btn svg { display: block; }
+
+.nav-divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(194, 65, 12, 0.2);
+    margin: 0 -2px;
+}
+
+.sync-btn {
+    font-size: 0.95rem;
+    opacity: 0.7;
+}
+
+.sync-btn:hover { opacity: 1; }
 
 @media (max-width: 480px) {
     .floating-nav {
-        bottom: calc(34px + env(safe-area-inset-bottom)) !important;
+        bottom: calc(34px + env(safe-area-inset-bottom));
+        padding: 6px 14px;
+        gap: 12px;
     }
+    .nav-btn { width: 40px; height: 40px; }
+    .nav-divider { height: 20px; }
+    .calendar-day .day-number { font-size: 0.72rem; }
+    .calendar-day .miss-count { font-size: 0.5rem; }
+}
+
+/* ==================== Legacy class neutralization ==================== */
+/* The original app.js still emits some Tailwind utility classes we don't want */
+.app-title {
+    font-family: 'Schibsted Grotesk', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
 }

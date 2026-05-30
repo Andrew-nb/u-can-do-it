@@ -150,19 +150,27 @@ class CloudSync {
         const el = document.getElementById('syncIndicator');
         if (!el) return;
 
+        // Phosphor / Tabler-style outline SVG icons (20x20)
+        const svg = {
+            syncing:  '<svg viewBox="0 0 24 24" fill="none" width="20" height="20" style="animation:spin 1.2s linear infinite"><path d="M21 12a9 9 0 11-3.5-7.1M21 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            success:  '<svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            error:    '<svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            disabled: '<svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+        };
+
         const map = {
-            syncing:  { icon: '🔄', tip: '同步中...', opacity: '1' },
-            success:  { icon: '☁️', tip: '已同步', opacity: '1' },
-            error:    { icon: '⚠️', tip: '同步失败', opacity: '0.8' },
-            disabled: { icon: '📴', tip: '云同步未启用', opacity: '0.5' },
+            syncing:  { tip: '同步中...', opacity: '1' },
+            success:  { tip: '已同步', opacity: '1' },
+            error:    { tip: '同步失败', opacity: '0.85' },
+            disabled: { tip: '云同步未启用', opacity: '0.55' },
         };
         const s = map[status] || map.disabled;
-        el.textContent = s.icon;
+        el.innerHTML = svg[status] || svg.disabled;
         el.title = s.tip;
         el.style.opacity = s.opacity;
 
         if (status === 'success') {
-            setTimeout(() => { el.style.opacity = '0.5'; }, 2500);
+            setTimeout(() => { el.style.opacity = '0.55'; }, 2500);
         }
     }
 }
@@ -499,15 +507,21 @@ class SleepModule {
     updateButtonState() {
         const btn = document.getElementById('sleepCheckInBtn');
         const record = this.dataManager.getTodaySleepRecord();
-        
+
         btn.classList.remove('gray', 'active-time', 'checked-in');
-        
+
         if (record) {
             btn.classList.add('checked-in');
         } else if (this.isInCheckInTime()) {
             btn.classList.add('active-time');
         } else {
             btn.classList.add('gray');
+        }
+
+        // Update label: 已打卡=晚安，其他=现在入睡（icon 由 CSS 切换）
+        const label = btn.querySelector('.sleep-btn-label');
+        if (label) {
+            label.textContent = record ? '晚安' : '现在入睡';
         }
     }
 
@@ -532,20 +546,55 @@ class SleepModule {
         const displayName = userName || '陌生人';
 
         document.getElementById('sleepGreeting').textContent = `${displayName}，${greetingText}`;
+
+        // Update eyebrow with total sleep check-in count: "— TONIGHT · No.149 —"
+        const eyebrow = document.getElementById('sleepEyebrow');
+        if (eyebrow) {
+            const count = this.dataManager.getSleepRecords().length;
+            const label = (hour >= 4 && hour < 18) ? 'TODAY' : 'TONIGHT';
+            eyebrow.textContent = count > 0
+                ? `— ${label} · No.${count} —`
+                : `— ${label} —`;
+        }
+
+        // Update subtitle by time band + check-in state
+        const sub = document.getElementById('sleepGreetSub');
+        if (sub) {
+            const checkedIn = !!this.dataManager.getTodaySleepRecord();
+            let subText;
+            if (checkedIn) {
+                subText = '晚安。明天见。';
+            } else if (hour >= 21 || hour < 4) {
+                // 入睡窗口
+                subText = '该睡了。今天平凡，平凡也很好。';
+            } else if (hour >= 4 && hour < 11) {
+                subText = '早睡的人，今天会有好状态。';
+            } else if (hour >= 11 && hour < 14) {
+                subText = '离今晚还早，别让自己太累。';
+            } else if (hour >= 14 && hour < 18) {
+                subText = '把要紧事做完，给自己留个早睡的余地。';
+            } else {
+                // 18:00 - 20:59
+                subText = '夜还没到，还能做点喜欢的事。';
+            }
+            sub.textContent = subText;
+        }
     }
 
     loadTodayRecord() {
         const record = this.dataManager.getTodaySleepRecord();
         const timeDisplay = document.getElementById('sleepTimeDisplay');
-        
+
         if (record) {
             timeDisplay.textContent = record.time;
         } else {
             const now = new Date();
             timeDisplay.textContent = this.dataManager.formatTime(now);
         }
-        
+
         this.updateButtonState();
+        // Refresh greeting / subtitle / eyebrow so they reflect the new record state
+        this.updateDateDisplay();
     }
 
     bindEvents() {
@@ -576,13 +625,13 @@ class SleepModule {
                 
                 this.loadTodayRecord();
                 this.updateChart();
-                this.showToast('🔄 已清除打卡记录');
+                this.showToast('已清除今晚记录');
                 if (window.cloudSync) window.cloudSync.debouncedPush(this.dataManager);
             }
         } else {
             // New check-in: block if outside time window
             if (!this.isInCheckInTime()) {
-                this.showToast('⏰ 请在 21:00 ~ 04:00 之间打卡');
+                this.showToast('入睡时间为 21:00 - 04:00');
                 return;
             }
             
@@ -594,7 +643,7 @@ class SleepModule {
             this.loadTodayRecord();
             this.updateChart();
             
-            this.showToast('✅ 打卡成功！');
+            this.showToast('已记录今晚入睡');
             if (window.cloudSync) window.cloudSync.debouncedPush(this.dataManager);
         }
     }
@@ -654,24 +703,24 @@ class SleepModule {
                 handleSize: '120%',
                 handleIcon: 'path://M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
                 handleStyle: {
-                    color: '#4f46e5',
+                    color: '#c2410c',
                     shadowBlur: 3,
                     shadowColor: 'rgba(0, 0, 0, 0.2)',
                     shadowOffsetX: 1,
                     shadowOffsetY: 1
                 },
-                borderColor: '#e5e7eb',
-                fillerColor: 'rgba(79, 70, 229, 0.12)',
-                backgroundColor: '#f9fafb',
+                borderColor: '#e6e0d3',
+                fillerColor: 'rgba(194, 65, 12, 0.12)',
+                backgroundColor: '#f3efe6',
                 dataBackground: {
-                    lineStyle: { color: '#a5b4fc' },
-                    areaStyle: { color: 'rgba(79, 70, 229, 0.08)' }
+                    lineStyle: { color: '#e0a87a' },
+                    areaStyle: { color: 'rgba(194, 65, 12, 0.08)' }
                 },
                 selectedDataBackground: {
-                    lineStyle: { color: '#4f46e5' },
-                    areaStyle: { color: 'rgba(79, 70, 229, 0.15)' }
+                    lineStyle: { color: '#c2410c' },
+                    areaStyle: { color: 'rgba(194, 65, 12, 0.15)' }
                 },
-                textStyle: { fontSize: 10, color: '#6b7280' },
+                textStyle: { fontSize: 10, color: '#8a8275' },
                 brushSelect: false
             },
             {
@@ -740,11 +789,11 @@ class SleepModule {
                 symbol: 'circle',
                 symbolSize: symbolSize,
                 lineStyle: {
-                    color: '#4f46e5',
+                    color: '#c2410c',
                     width: lineWidth
                 },
                 itemStyle: {
-                    color: '#4f46e5'
+                    color: '#c2410c'
                 },
                 areaStyle: {
                     color: {
@@ -755,10 +804,10 @@ class SleepModule {
                         y2: 1,
                         colorStops: [{
                             offset: 0,
-                            color: 'rgba(79, 70, 229, 0.3)'
+                            color: 'rgba(194, 65, 12, 0.28)'
                         }, {
                             offset: 1,
-                            color: 'rgba(79, 70, 229, 0.05)'
+                            color: 'rgba(194, 65, 12, 0.04)'
                         }]
                     }
                 }
@@ -1125,7 +1174,7 @@ class HabitModule {
                     actionArea = `
                         <div class="flex space-x-2">
                             <div class="flex-1 bg-green-50 text-green-700 text-center py-3 rounded-lg font-medium">
-                                🎉 本周目标已完成！
+                                本周目标已完成
                             </div>
                             <button id="cancel-${habit.id}" class="cancel-checkin-btn px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium text-sm">
                                 撤回
@@ -1135,7 +1184,7 @@ class HabitModule {
                 } else {
                     actionArea = `
                         <div class="bg-green-50 text-green-700 text-center py-3 rounded-lg font-medium mb-3">
-                            🎉 本周目标已完成！
+                            本周目标已完成
                         </div>
                         <button id="checkIn-${habit.id}" class="extra-checkin-btn w-full font-bold py-3 rounded-lg transition-all">
                             额外打卡
@@ -1267,7 +1316,8 @@ class RecordModule {
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
         
-        document.getElementById('currentMonth').textContent = `${year}年${month + 1}月`;
+        const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
         
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
@@ -1537,21 +1587,21 @@ function showNicknameModal() {
     return new Promise((resolve) => {
         // Create modal overlay
         const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(26,24,20,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:10000;';
 
         const modal = document.createElement('div');
-        modal.style.cssText = 'background:white;border-radius:16px;padding:32px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+        modal.style.cssText = "background:#fffdf7;border:1px solid #e6e0d3;border-radius:20px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 30px 60px -20px rgba(0,0,0,0.35);font-family:'Schibsted Grotesk','Noto Sans SC',sans-serif;";
         modal.innerHTML = `
-            <div style="font-size:48px;margin-bottom:16px;">👋</div>
-            <h2 style="font-size:22px;font-weight:bold;color:#1f2937;margin-bottom:8px;">欢迎使用自律打卡！</h2>
-            <p style="color:#6b7280;margin-bottom:24px;font-size:14px;">请设置你的昵称，设置后即可开始使用</p>
+            <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.28em;color:#c2410c;text-transform:uppercase;font-weight:500;margin-bottom:14px;">— WELCOME —</div>
+            <h2 style="font-family:'Schibsted Grotesk',sans-serif;font-size:26px;font-weight:600;color:#1a1814;letter-spacing:-0.01em;line-height:1.2;margin-bottom:8px;">设置 <em style="color:#c2410c;font-style:italic;font-weight:700;">昵称</em></h2>
+            <p style="color:#8a8275;margin-bottom:26px;font-size:13px;line-height:1.6;">设置一个你喜欢的称呼，开始记录你的自律</p>
             <input id="nicknameInput" type="text" placeholder="输入你的昵称" maxlength="20"
-                style="width:100%;padding:12px 16px;border:2px solid #e5e7eb;border-radius:10px;font-size:16px;outline:none;box-sizing:border-box;margin-bottom:8px;"
+                style="width:100%;padding:12px 14px;border:1px solid #e6e0d3;border-radius:10px;font-size:15px;background:#fafaf6;color:#1a1814;outline:none;box-sizing:border-box;margin-bottom:8px;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;"
             />
-            <p id="nicknameError" style="color:#ef4444;font-size:12px;min-height:18px;margin-bottom:16px;"></p>
+            <p id="nicknameError" style="color:#8b1a1a;font-size:12px;min-height:18px;margin-bottom:18px;font-family:'JetBrains Mono',monospace;letter-spacing:0.02em;"></p>
             <button id="nicknameSubmit"
-                style="width:100%;padding:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;">
-                开始使用 🚀
+                style="width:100%;padding:13px;background:#c2410c;color:#fff8ee;border:1px solid #c2410c;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:0.02em;box-shadow:0 8px 20px -8px rgba(194,65,12,0.5);transition:all 0.2s;">
+                开始使用
             </button>
         `;
         overlay.appendChild(modal);
@@ -1561,13 +1611,31 @@ function showNicknameModal() {
         const errorEl = modal.querySelector('#nicknameError');
         const submitBtn = modal.querySelector('#nicknameSubmit');
 
+        // Focus + hover/focus states
         input.focus();
+        input.addEventListener('focus', () => {
+            input.style.borderColor = '#c2410c';
+            input.style.boxShadow = '0 0 0 3px rgba(194,65,12,0.12)';
+        });
+        input.addEventListener('blur', () => {
+            input.style.boxShadow = 'none';
+        });
+        submitBtn.addEventListener('mouseenter', () => {
+            submitBtn.style.background = '#a3360a';
+            submitBtn.style.borderColor = '#a3360a';
+            submitBtn.style.transform = 'translateY(-1px)';
+        });
+        submitBtn.addEventListener('mouseleave', () => {
+            submitBtn.style.background = '#c2410c';
+            submitBtn.style.borderColor = '#c2410c';
+            submitBtn.style.transform = 'translateY(0)';
+        });
 
         const submit = () => {
             const val = input.value.trim();
             if (!val) {
                 errorEl.textContent = '昵称不能为空，请输入昵称';
-                input.style.borderColor = '#ef4444';
+                input.style.borderColor = '#8b1a1a';
                 input.focus();
                 return;
             }
@@ -1581,7 +1649,7 @@ function showNicknameModal() {
         });
         input.addEventListener('input', () => {
             errorEl.textContent = '';
-            input.style.borderColor = '#e5e7eb';
+            input.style.borderColor = '#c2410c';
         });
     });
 }

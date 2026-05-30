@@ -68,154 +68,163 @@
     })();
     </script>
 <title>自律</title>
-    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen pb-24">
+<body class="min-h-screen pb-24">
     <!-- Sleep Check-in Page -->
     <div id="sleepPage" class="page-content active">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold text-gray-800" id="sleepGreeting"></h2>
+        <div class="container">
+            <div class="greeting">
+                <div class="eyebrow" id="sleepEyebrow">— TONIGHT —</div>
+                <h2 id="sleepGreeting"></h2>
+                <p class="greet-sub" id="sleepGreetSub">该睡了。今天平凡，平凡也很好。</p>
             </div>
 
-            <div class="flex justify-center items-center mb-8">
-                <button id="sleepCheckInBtn" class="sleep-circle-btn">
-                    <div id="sleepTimeDisplay" class="text-4xl font-bold">
-                        --:--:--
-                    </div>
-                </button>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-xl p-6">
-                <div class="chart-header">
-                    <h3 class="chart-title"><span>入睡时间</span><span>趋势曲线</span></h3>
-                    <div class="time-range-group">
-                        <button class="time-range-btn active" data-range="week">本周</button>
-                        <button class="time-range-btn" data-range="month">本月</button>
-                        <button class="time-range-btn" data-range="halfYear">半年</button>
-                        <button class="time-range-btn" data-range="year">一年</button>
+            <div class="sleep-card">
+                <div class="sleep-card-top">
+                    <div class="sleep-clock-row">
+                        <div id="sleepTimeDisplay" class="sleep-time">--:--:--</div>
+                        <button id="sleepCheckInBtn" class="sleep-circle-btn">
+                            <span class="sleep-btn-icon-wrap">
+                                <svg class="sleep-btn-icon icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <svg class="sleep-btn-icon icon-check" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <span class="sleep-btn-label">现在入睡</span>
+                        </button>
                     </div>
                 </div>
-                <div id="sleepChart" style="width: 100%; height: 400px;"></div>
+
+                <div class="sleep-chart-wrap">
+                    <div class="chart-header">
+                        <h3 class="chart-title"><span>入睡时间</span><span>趋势曲线</span></h3>
+                        <div class="time-range-group">
+                            <button class="time-range-btn active" data-range="week">本周</button>
+                            <button class="time-range-btn" data-range="month">本月</button>
+                            <button class="time-range-btn" data-range="halfYear">半年</button>
+                            <button class="time-range-btn" data-range="year">一年</button>
+                        </div>
+                    </div>
+                    <div id="sleepChart" style="width: 100%; height: 400px;"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Habit Check-in Page -->
     <div id="habitPage" class="page-content">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold text-gray-800" id="habitDate"></h2>
-                <p class="text-gray-600 mt-2" id="habitWeekInfo"></p>
-            </div>
-
-            <div class="text-center mb-8">
-                <button id="addHabitBtn" class="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold py-3 px-8 rounded-xl transition-all transform hover:scale-105 shadow-lg">
-                    ➕ 添加新习惯
+        <div class="container">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <div class="eyebrow">— TODAY —</div>
+                    <h2 class="page-title">今日 <em>习惯</em></h2>
+                    <p class="page-sub" id="habitWeekInfo"></p>
+                    <span id="habitDate" class="hidden-meta"></span>
+                </div>
+                <button id="addHabitBtn" class="add-habit-btn" title="添加新习惯">
+                    <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span>添加习惯</span>
                 </button>
             </div>
 
-            <div id="habitList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            </div>
+            <div id="habitList" class="habit-grid"></div>
 
-            <div id="emptyHabitState" class="text-center py-16 hidden">
-                <div class="text-6xl mb-4">📝</div>
-                <p class="text-gray-500 text-lg">还没有添加任何习惯</p>
-                <p class="text-gray-400 mt-2">点击上方按钮添加你的第一个习惯吧！</p>
+            <div id="emptyHabitState" class="empty-state hidden">
+                <svg viewBox="0 0 24 24" fill="none" width="48" height="48"><path d="M9 12h6M9 16h6M9 8h6M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <p class="empty-title">还没有添加任何习惯</p>
+                <p class="empty-sub">点击上方按钮添加你的第一个习惯</p>
             </div>
         </div>
     </div>
 
     <!-- Check-in Records Page -->
     <div id="recordPage" class="page-content">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold text-gray-800">缺卡记录</h2>
-                <p class="text-gray-600 mt-2">查看你的历史记录</p>
+        <div class="container">
+            <div class="page-header page-header-center">
+                <div class="eyebrow">— ARCHIVE —</div>
+                <h2 class="page-title">缺卡 <em>记录</em></h2>
+                <p class="page-sub">查看你的历史记录</p>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-xl p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <button id="prevMonth" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all">
-                        ← 上月
+            <div class="record-card">
+                <div class="month-nav">
+                    <button id="prevMonth" class="month-arrow" title="上月">
+                        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
-                    <h3 id="currentMonth" class="text-xl font-bold text-gray-800"></h3>
-                    <button id="nextMonth" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all">
-                        下月 →
+                    <h3 id="currentMonth" class="month-title"></h3>
+                    <button id="nextMonth" class="month-arrow" title="下月">
+                        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                 </div>
 
-                <div id="calendarGrid" class="grid grid-cols-7 gap-1 mb-6">
-                    <div class="text-center font-bold text-gray-600 py-2">一</div>
-                    <div class="text-center font-bold text-gray-600 py-2">二</div>
-                    <div class="text-center font-bold text-gray-600 py-2">三</div>
-                    <div class="text-center font-bold text-gray-600 py-2">四</div>
-                    <div class="text-center font-bold text-gray-600 py-2">五</div>
-                    <div class="text-center font-bold text-gray-600 py-2">六</div>
-                    <div class="text-center font-bold text-gray-600 py-2">日</div>
+                <div id="calendarGrid" class="calendar-grid">
+                    <div class="weekday-header">一</div>
+                    <div class="weekday-header">二</div>
+                    <div class="weekday-header">三</div>
+                    <div class="weekday-header">四</div>
+                    <div class="weekday-header">五</div>
+                    <div class="weekday-header">六</div>
+                    <div class="weekday-header">日</div>
                 </div>
 
-                <div class="border-t pt-6">
-                    <h4 class="text-lg font-bold text-gray-800 mb-4">颜色说明</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 rounded-lg" style="background-color:#10b981"></div>
-                            <span class="text-sm text-gray-700">完美（0次）</span>
+                <div class="legend-section">
+                    <h4 class="legend-title">颜色说明</h4>
+                    <div class="legend-grid">
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background-color:#5d7a64"></div>
+                            <span class="legend-label">完美（0次）</span>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 rounded-lg" style="background-color:#fbbf24"></div>
-                            <span class="text-sm text-gray-700">良好（&lt;2次）</span>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background-color:#a8854a"></div>
+                            <span class="legend-label">良好（&lt;2次）</span>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 rounded-lg" style="background-color:#fb923c"></div>
-                            <span class="text-sm text-gray-700">一般（2-3次）</span>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background-color:#c2410c"></div>
+                            <span class="legend-label">一般（2-3次）</span>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 rounded-lg" style="background-color:#ef4444"></div>
-                            <span class="text-sm text-gray-700">严重（&gt;3次）</span>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background-color:#8b1a1a"></div>
+                            <span class="legend-label">严重（&gt;3次）</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <p class="text-center text-gray-400 text-sm mt-4 mb-2">由 <span style="color: #8A2BE2; font-weight: bold;">pyttt</span> vibe coding 生成</p>
+            <p class="signature">由 <span class="sig-name">pyttt</span> vibe coding 生成</p>
         </div>
     </div>
 
     <!-- Add Habit Modal -->
     <div id="addHabitModal" class="modal">
         <div class="modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold text-gray-800">添加新习惯</h3>
-                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700 text-3xl leading-none">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title">添加 <em>新习惯</em></h3>
+                <button id="closeModalBtn" class="modal-close" title="关闭">
+                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
             </div>
             <form id="addHabitForm">
-                <div class="mb-6">
-                    <label class="block text-gray-700 font-medium mb-2">习惯名称</label>
-                    <input type="text" id="habitName" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="例如：喝水、运动" required>
+                <div class="form-row">
+                    <label class="form-label">习惯名称</label>
+                    <input type="text" id="habitName" class="form-input" placeholder="例如：喝水、运动" required>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 font-medium mb-2">打卡类型</label>
-                    <select id="habitType" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                <div class="form-row">
+                    <label class="form-label">打卡类型</label>
+                    <select id="habitType" class="form-input">
                         <option value="daily">每天打卡</option>
                         <option value="weekly" selected>每周打卡指定次数</option>
                     </select>
                 </div>
-                <div class="mb-6" id="frequencyGroup">
-                    <label class="block text-gray-700 font-medium mb-2">每周打卡次数</label>
-                    <input type="number" id="habitFrequency" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="1" max="7" value="3" required>
-                    <p class="text-sm text-gray-500 mt-2">设置每周需要完成的次数（1-7次）</p>
+                <div class="form-row" id="frequencyGroup">
+                    <label class="form-label">每周打卡次数</label>
+                    <input type="number" id="habitFrequency" class="form-input" min="1" max="7" value="3" required>
+                    <p class="form-hint">设置每周需要完成的次数（1-7次）</p>
                 </div>
-                <div class="flex space-x-4">
-                    <button type="submit" class="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all">
-                        确认添加
-                    </button>
-                    <button type="button" id="cancelModalBtn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-6 rounded-lg transition-all">
-                        取消
-                    </button>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">确认添加</button>
+                    <button type="button" id="cancelModalBtn" class="btn-secondary">取消</button>
                 </div>
             </form>
         </div>
@@ -224,17 +233,17 @@
     <!-- Floating Bottom Navigation -->
     <nav class="floating-nav" id="floatingNav">
         <button id="navSleep" class="nav-btn active" title="睡眠">
-            😴
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <button id="navHabit" class="nav-btn" title="习惯">
-            ✅
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <button id="navRecord" class="nav-btn" title="记录">
-            📅
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <span class="nav-divider"></span>
         <button id="syncIndicator" class="nav-btn sync-btn" title="云同步">
-            📴
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
     </nav>
 
